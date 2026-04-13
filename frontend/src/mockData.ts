@@ -11,7 +11,7 @@ export const fallbackWorkspace: WorkspaceData = {
     version: 1,
     preferredMode: 'Document',
     lastOpenedPath: '',
-    autosave: true,
+    autosave: false,
     theme: 'marktyp',
   },
   notes: [

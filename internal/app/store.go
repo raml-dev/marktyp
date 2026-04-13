@@ -400,7 +400,7 @@ func (s *Store) readConfig() (AppConfig, error) {
 		config := AppConfig{
 			Version:       1,
 			PreferredMode: "Document",
-			Autosave:      true,
+			Autosave:      false,
 			Theme:         AppName,
 		}
 
