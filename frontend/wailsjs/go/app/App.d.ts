@@ -28,4 +28,6 @@ export function SaveDocument(arg1:app.SaveDocumentRequest):Promise<app.Workspace
 
 export function SaveDocumentAs(arg1:app.SaveDocumentRequest):Promise<app.WorkspaceData>;
 
+export function SaveDraft(arg1:string,arg2:string):Promise<void>;
+
 export function UpdatePreferences(arg1:app.UpdatePreferencesRequest):Promise<app.AppConfig>;

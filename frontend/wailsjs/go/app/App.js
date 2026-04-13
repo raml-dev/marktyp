@@ -54,6 +54,10 @@ export function SaveDocumentAs(arg1) {
   return window['go']['app']['App']['SaveDocumentAs'](arg1);
 }
 
+export function SaveDraft(arg1, arg2) {
+  return window['go']['app']['App']['SaveDraft'](arg1, arg2);
+}
+
 export function UpdatePreferences(arg1) {
   return window['go']['app']['App']['UpdatePreferences'](arg1);
 }

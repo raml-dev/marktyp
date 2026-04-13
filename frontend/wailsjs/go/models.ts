@@ -43,6 +43,7 @@ export namespace app {
 	    title: string;
 	    path: string;
 	    markdown: string;
+	    draftMarkdown?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new DocumentState(source);
@@ -54,6 +55,7 @@ export namespace app {
 	        this.title = source["title"];
 	        this.path = source["path"];
 	        this.markdown = source["markdown"];
+	        this.draftMarkdown = source["draftMarkdown"];
 	    }
 	}
 	export class ExportHTMLRequest {

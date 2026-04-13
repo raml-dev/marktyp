@@ -19,6 +19,7 @@ import {
   RevealNoteInFS,
   SaveDocument,
   SaveDocumentAs,
+  SaveDraft,
   UpdatePreferences,
 } from '../../wailsjs/go/app/App';
 
@@ -56,6 +57,10 @@ export async function saveDocument(request: SaveDocumentRequest): Promise<Worksp
 
 export async function saveDocumentAs(request: SaveDocumentRequest): Promise<WorkspaceData> {
   return SaveDocumentAs(request);
+}
+
+export async function saveDraft(path: string, markdown: string): Promise<void> {
+  return SaveDraft(path, markdown);
 }
 
 export async function exportHTML(request: ExportHTMLRequest): Promise<void> {

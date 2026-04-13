@@ -16,6 +16,7 @@
     revealNoteInFS,
     saveDocument,
     saveDocumentAs,
+    saveDraft,
     updatePreferences,
   } from './lib/backend';
   import {htmlToMarkdown, markdownToHtml, titleFromMarkdown} from './lib/markdown';
@@ -77,6 +78,7 @@
   let dualSplit = 58;
   let resizingSidebar = false;
   let resizingDual = false;
+  let draftTimer: number | null = null;
 
   function normalizeMode(value: string | null | undefined): EditorMode {
     const raw = (value || '').trim().toLowerCase();
@@ -115,6 +117,23 @@
 
   $: {
     document.documentElement.dataset.theme = workspace.config.theme || 'marktyp';
+  }
+
+  $: {
+    if (draftTimer) {
+      window.clearTimeout(draftTimer);
+      draftTimer = null;
+    }
+
+    if (isDirty && documentState.path && documentState.path.trim() !== '') {
+      draftTimer = window.setTimeout(async () => {
+        try {
+          await saveDraft(documentState.path, markdown);
+        } catch {
+          console.error('Failed to save draft');
+        }
+      }, 800);
+    }
   }
 
   $: {
@@ -523,12 +542,14 @@
       const nextWorkspace = await getWorkspace();
       workspace = nextWorkspace;
       documentState = nextWorkspace.activeDoc;
-      markdown = nextWorkspace.activeDoc.markdown;
-      sourceDraft = nextWorkspace.activeDoc.markdown;
+      const initialMarkdown = nextWorkspace.activeDoc.draftMarkdown || nextWorkspace.activeDoc.markdown;
+      markdown = initialMarkdown;
+      sourceDraft = initialMarkdown;
+      isDirty = !!nextWorkspace.activeDoc.draftMarkdown;
       mode = normalizeMode(nextWorkspace.config.preferredMode);
-      resetSourceHistory(nextWorkspace.activeDoc.markdown || '');
-      resetMarkdownHistory(nextWorkspace.activeDoc.markdown || '');
-      statusMessage = 'Workspace loaded';
+      resetSourceHistory(initialMarkdown || '');
+      resetMarkdownHistory(initialMarkdown || '');
+      statusMessage = nextWorkspace.activeDoc.draftMarkdown ? 'Draft loaded' : 'Workspace loaded';
     } catch {
       resetSourceHistory(fallbackWorkspace.activeDoc.markdown || '');
       resetMarkdownHistory(fallbackWorkspace.activeDoc.markdown || '');
@@ -539,13 +560,14 @@
   function applyWorkspace(nextWorkspace: WorkspaceData, nextMessage: string) {
     workspace = nextWorkspace;
     documentState = nextWorkspace.activeDoc;
-    markdown = nextWorkspace.activeDoc.markdown;
-    sourceDraft = nextWorkspace.activeDoc.markdown;
-    isDirty = false;
+    const initialMarkdown = nextWorkspace.activeDoc.draftMarkdown || nextWorkspace.activeDoc.markdown;
+    markdown = initialMarkdown;
+    sourceDraft = initialMarkdown;
+    isDirty = !!nextWorkspace.activeDoc.draftMarkdown;
     noteContextMenu = null;
-    statusMessage = nextMessage;
-    resetSourceHistory(nextWorkspace.activeDoc.markdown || '');
-    resetMarkdownHistory(nextWorkspace.activeDoc.markdown || '');
+    statusMessage = nextWorkspace.activeDoc.draftMarkdown ? 'Draft loaded' : nextMessage;
+    resetSourceHistory(initialMarkdown || '');
+    resetMarkdownHistory(initialMarkdown || '');
     documentHistory = [];
     documentHistoryIndex = -1;
   }

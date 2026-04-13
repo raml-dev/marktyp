@@ -19,9 +19,10 @@ type notesDB struct {
 }
 
 type storedNote struct {
-	Path      string `json:"path"`
-	CreatedAt string `json:"createdAt"`
-	UpdatedAt string `json:"updatedAt"`
+	Path          string `json:"path"`
+	CreatedAt     string `json:"createdAt"`
+	UpdatedAt     string `json:"updatedAt"`
+	DraftMarkdown string `json:"draftMarkdown,omitempty"`
 }
 
 func NewStore() *Store {
@@ -143,7 +144,7 @@ func (s *Store) SaveDocument(request SaveDocumentRequest, appInfo AppInfo) (Work
 		return WorkspaceData{}, err
 	}
 
-	if err := s.upsertNote(path, true); err != nil {
+	if err := s.upsertNote(path, true, ""); err != nil {
 		return WorkspaceData{}, err
 	}
 
@@ -228,13 +229,35 @@ func (s *Store) GetDocument(path string) (DocumentState, error) {
 		return DocumentState{}, err
 	}
 
+	db, err := s.readNotesDB()
+	if err != nil {
+		return DocumentState{}, err
+	}
+
+	draft := ""
+	for _, note := range db.Notes {
+		if note.Path == path {
+			draft = note.DraftMarkdown
+			break
+		}
+	}
+
 	markdown := string(markdownBytes)
 	return DocumentState{
-		ID:       noteID(path),
-		Title:    titleFromMarkdown(path, markdown),
-		Path:     path,
-		Markdown: markdown,
+		ID:            noteID(path),
+		Title:         titleFromMarkdown(path, markdown),
+		Path:          path,
+		Markdown:      markdown,
+		DraftMarkdown: draft,
 	}, nil
+}
+
+func (s *Store) SaveDraft(path string, markdown string) error {
+	if err := s.ensureStorage(); err != nil {
+		return err
+	}
+
+	return s.upsertNote(path, false, markdown)
 }
 
 func (s *Store) UpdatePreferences(request UpdatePreferencesRequest) (AppConfig, error) {
@@ -268,7 +291,7 @@ func (s *Store) RegisterOpenedNote(path string) error {
 		return err
 	}
 
-	return s.upsertNote(path, false)
+	return s.upsertNote(path, false, "")
 }
 
 func (s *Store) listNotes() ([]NoteSummary, error) {
@@ -301,7 +324,7 @@ func (s *Store) listNotes() ([]NoteSummary, error) {
 	return notes, nil
 }
 
-func (s *Store) upsertNote(path string, markUpdated bool) error {
+func (s *Store) upsertNote(path string, markUpdated bool, draft string) error {
 	db, err := s.readNotesDB()
 	if err != nil {
 		return err
@@ -323,6 +346,8 @@ func (s *Store) upsertNote(path string, markUpdated bool) error {
 				db.Notes[index].UpdatedAt = fileTimestampOrNow(path, now)
 			}
 
+			db.Notes[index].DraftMarkdown = draft
+
 			found = true
 			break
 		}
@@ -336,9 +361,10 @@ func (s *Store) upsertNote(path string, markUpdated bool) error {
 		}
 
 		db.Notes = append(db.Notes, storedNote{
-			Path:      path,
-			CreatedAt: createdAt,
-			UpdatedAt: updatedAt,
+			Path:          path,
+			CreatedAt:     createdAt,
+			UpdatedAt:     updatedAt,
+			DraftMarkdown: draft,
 		})
 	}
 

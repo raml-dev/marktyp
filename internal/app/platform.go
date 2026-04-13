@@ -82,6 +82,13 @@ func (a *App) SaveDocument(request SaveDocumentRequest) (WorkspaceData, error) {
 	return a.store.SaveDocument(request, a.info)
 }
 
+func (a *App) SaveDraft(path string, markdown string) error {
+	if strings.TrimSpace(path) == "" {
+		return nil
+	}
+	return a.store.SaveDraft(path, markdown)
+}
+
 func (a *App) SaveDocumentAs(request SaveDocumentRequest) (WorkspaceData, error) {
 	defaultFilename := request.Title
 	if defaultFilename == "" {

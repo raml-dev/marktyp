@@ -30,10 +30,11 @@ type NoteSummary struct {
 }
 
 type DocumentState struct {
-	ID       string `json:"id"`
-	Title    string `json:"title"`
-	Path     string `json:"path"`
-	Markdown string `json:"markdown"`
+	ID            string `json:"id"`
+	Title         string `json:"title"`
+	Path          string `json:"path"`
+	Markdown      string `json:"markdown"`
+	DraftMarkdown string `json:"draftMarkdown,omitempty"`
 }
 
 type WorkspaceData struct {
