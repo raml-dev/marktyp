@@ -71,6 +71,8 @@
   let documentHistory: string[] = [];
   let documentHistoryIndex = -1;
   let applyingDocumentHistory = false;
+  let documentEditorChanged = false;
+  let suppressNextDocumentBlur = false;
   let appMainEl: HTMLElement | null = null;
   let dualBodyEl: HTMLElement | null = null;
   let sidebarCollapsed = false;
@@ -549,6 +551,7 @@
       mode = normalizeMode(nextWorkspace.config.preferredMode);
       resetSourceHistory(initialMarkdown || '');
       resetMarkdownHistory(initialMarkdown || '');
+      documentEditorChanged = false;
       statusMessage = nextWorkspace.activeDoc.draftMarkdown ? 'Draft loaded' : 'Workspace loaded';
     } catch {
       resetSourceHistory(fallbackWorkspace.activeDoc.markdown || '');
@@ -570,6 +573,7 @@
     resetMarkdownHistory(initialMarkdown || '');
     documentHistory = [];
     documentHistoryIndex = -1;
+    documentEditorChanged = false;
   }
 
   async function handleNewDocument() {
@@ -585,6 +589,7 @@
       resetMarkdownHistory(freshDocument.markdown || '');
       documentHistory = [];
       documentHistoryIndex = -1;
+      documentEditorChanged = false;
     } catch {
       statusMessage = 'Unable to create a new document';
     }
@@ -679,11 +684,6 @@
   }
 
   async function handleSelectNote(notePath: string) {
-    if ((isDirty || sourceDraft !== markdown) && notePath !== documentState.path) {
-      statusMessage = 'Save changes before switching notes';
-      return;
-    }
-
     if (notePath === documentState.path) {
       return;
     }
@@ -1140,6 +1140,7 @@
       return false;
     }
     document.execCommand(command, false, value);
+    documentEditorChanged = true;
     syncDocumentEditorToMarkdown();
     recordDocumentHistory();
     openMenu = null;
@@ -1163,6 +1164,7 @@
     range.deleteContents();
     range.insertNode(fragment);
 
+    documentEditorChanged = true;
     syncDocumentEditorToMarkdown();
     renderPreviewDecorations(documentPreviewEl);
     recordDocumentHistory();
@@ -1181,6 +1183,7 @@
   }
 
   function handleDocumentInput() {
+    documentEditorChanged = true;
     syncDocumentEditorToMarkdown('Document changed');
     recordDocumentHistory();
   }
@@ -1197,8 +1200,21 @@
   }
 
   function handleDocumentBlur() {
-    syncDocumentEditorToMarkdown('Document synced');
+    if (suppressNextDocumentBlur) {
+      suppressNextDocumentBlur = false;
+      return;
+    }
+    if (documentEditorChanged) {
+      syncDocumentEditorToMarkdown('Document synced');
+    }
+    documentEditorChanged = false;
     isEditingDocument = false;
+  }
+
+  function handleDocumentMouseDown(event: MouseEvent) {
+    if (event.button === 2) {
+      suppressNextDocumentBlur = true;
+    }
   }
 
   function handleDocumentSelectionEvent() {
@@ -1771,6 +1787,7 @@
                   on:input={handleDocumentInput}
                   on:keydown|capture={handleDocumentKeyDown}
                   on:keyup={handleDocumentSelectionEvent}
+                  on:mousedown={handleDocumentMouseDown}
                   on:mouseup={handleDocumentSelectionEvent}
                   spellcheck="false"
                 >

@@ -44,35 +44,43 @@ func (s *Store) GetWorkspace(appInfo AppInfo) (WorkspaceData, error) {
 		return WorkspaceData{}, err
 	}
 
-	activePath := config.LastOpenedPath
-	if activePath == "" {
-		activePath = db.LastOpenedPath
+	// Build a deduplicated list of candidate paths to try, in priority order.
+	seen := make(map[string]bool)
+	var candidates []string
+	for _, p := range []string{config.LastOpenedPath, db.LastOpenedPath} {
+		if p != "" && !seen[p] {
+			seen[p] = true
+			candidates = append(candidates, p)
+		}
 	}
-	if activePath == "" && len(db.Notes) > 0 {
-		activePath = db.Notes[0].Path
+	for _, note := range db.Notes {
+		if note.Path != "" && !seen[note.Path] {
+			seen[note.Path] = true
+			candidates = append(candidates, note.Path)
+		}
 	}
 
 	var document DocumentState
+	activePath := ""
+	for _, p := range candidates {
+		doc, docErr := s.GetDocument(p)
+		if docErr == nil {
+			document = doc
+			activePath = p
+			break
+		}
+	}
 	if activePath == "" {
 		document = NewDocument()
-		config.LastOpenedPath = ""
-	} else {
-		document, err = s.GetDocument(activePath)
-		if err != nil {
-			config.LastOpenedPath = ""
-			if writeErr := s.writeConfig(config); writeErr != nil {
-				return WorkspaceData{}, writeErr
-			}
-			return s.GetWorkspace(appInfo)
-		}
+	}
 
+	if activePath != "" {
 		if err := s.RegisterOpenedNote(activePath); err != nil {
 			return WorkspaceData{}, err
 		}
-
-		config.LastOpenedPath = activePath
 	}
 
+	config.LastOpenedPath = activePath
 	if err := s.writeConfig(config); err != nil {
 		return WorkspaceData{}, err
 	}
@@ -291,7 +299,42 @@ func (s *Store) RegisterOpenedNote(path string) error {
 		return err
 	}
 
-	return s.upsertNote(path, false, "")
+	db, err := s.readNotesDB()
+	if err != nil {
+		return err
+	}
+
+	now := time.Now().Format(time.RFC3339)
+	found := false
+	for index := range db.Notes {
+		if db.Notes[index].Path == path {
+			if db.Notes[index].CreatedAt == "" {
+				db.Notes[index].CreatedAt = fileTimestampOrNow(path, now)
+			}
+			if db.Notes[index].UpdatedAt == "" {
+				db.Notes[index].UpdatedAt = fileTimestampOrNow(path, now)
+			}
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		createdAt := fileTimestampOrNow(path, now)
+		db.Notes = append(db.Notes, storedNote{
+			Path:      path,
+			CreatedAt: createdAt,
+			UpdatedAt: createdAt,
+		})
+	}
+
+	db.LastOpenedPath = path
+
+	sort.Slice(db.Notes, func(i, j int) bool {
+		return db.Notes[i].UpdatedAt > db.Notes[j].UpdatedAt
+	})
+
+	return s.writeNotesDB(db)
 }
 
 func (s *Store) listNotes() ([]NoteSummary, error) {
