@@ -1,65 +1,68 @@
 package main
 
 import (
-	internalapp "marktyp/internal/app"
-
 	"github.com/wailsapp/wails/v2/pkg/menu"
 )
 
-func buildNativeMenu(app *internalapp.App) *menu.Menu {
+func buildNativeMenu(app *App) *menu.Menu {
 	mainMenu := menu.NewMenu()
 
 	fileMenu := mainMenu.AddSubmenu("File")
 	fileMenu.AddText("New", nil, func(_ *menu.CallbackData) {
-		app.EmitMenuAction("file:new")
+		app.emitMenuAction("file:new")
 	})
 	fileMenu.AddText("Open", nil, func(_ *menu.CallbackData) {
-		app.EmitMenuAction("file:open")
+		app.emitMenuAction("file:open")
 	})
 	fileMenu.AddSeparator()
 	fileMenu.AddText("Save", nil, func(_ *menu.CallbackData) {
-		app.EmitMenuAction("file:save")
+		app.emitMenuAction("file:save")
 	})
 	fileMenu.AddText("Save As", nil, func(_ *menu.CallbackData) {
-		app.EmitMenuAction("file:save-as")
+		app.emitMenuAction("file:save-as")
 	})
 	fileMenu.AddSeparator()
 	fileMenu.AddText("Delete Note", nil, func(_ *menu.CallbackData) {
-		app.EmitMenuAction("file:delete")
+		app.emitMenuAction("file:delete")
 	})
 
 	exportMenu := mainMenu.AddSubmenu("Export")
 	exportMenu.AddText("Export HTML", nil, func(_ *menu.CallbackData) {
-		app.EmitMenuAction("export:html")
+		app.emitMenuAction("export:html")
 	})
 	exportMenu.AddText("Export PDF", nil, func(_ *menu.CallbackData) {
-		app.EmitMenuAction("export:pdf")
+		app.emitMenuAction("export:pdf")
 	})
 
 	viewMenu := mainMenu.AddSubmenu("View")
 	viewMenu.AddText("Document Mode", nil, func(_ *menu.CallbackData) {
-		app.EmitMenuAction("view:document")
+		app.emitMenuAction("view:document")
 	})
 	viewMenu.AddText("Source Mode", nil, func(_ *menu.CallbackData) {
-		app.EmitMenuAction("view:source")
+		app.emitMenuAction("view:source")
 	})
 	viewMenu.AddText("Dual Mode", nil, func(_ *menu.CallbackData) {
-		app.EmitMenuAction("view:dual")
+		app.emitMenuAction("view:dual")
 	})
 	viewMenu.AddSeparator()
 	viewMenu.AddText("Toggle Autosave", nil, func(_ *menu.CallbackData) {
-		app.EmitMenuAction("view:toggle-autosave")
+		app.emitMenuAction("view:toggle-autosave")
 	})
 
 	settingsMenu := mainMenu.AddSubmenu("Settings")
 	settingsMenu.AddText("Theme: Marktyp", nil, func(_ *menu.CallbackData) {
-		app.EmitMenuAction("settings:theme-marktyp")
+		app.emitMenuAction("settings:theme-marktyp")
 	})
 	settingsMenu.AddText("Theme: Light", nil, func(_ *menu.CallbackData) {
-		app.EmitMenuAction("settings:theme-light")
+		app.emitMenuAction("settings:theme-light")
 	})
 	settingsMenu.AddText("Theme: Dark", nil, func(_ *menu.CallbackData) {
-		app.EmitMenuAction("settings:theme-dark")
+		app.emitMenuAction("settings:theme-dark")
+	})
+
+	aboutMenu := mainMenu.AddSubmenu("About")
+	aboutMenu.AddText("Marktyp", nil, func(_ *menu.CallbackData) {
+		app.emitMenuAction("about:open")
 	})
 
 	return mainMenu

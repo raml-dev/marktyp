@@ -1,7 +1,8 @@
 :root {
   color: #1d1d1b;
   background: #f4f0e5;
-  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  font-family: 'Inter', 'Nunito', 'Segoe UI', Roboto, Ubuntu, Cantarell, 'Noto Sans', Arial, sans-serif;
+  font-size: 13px;
   line-height: 1.5;
   font-weight: 400;
   text-rendering: optimizeLegibility;
@@ -25,53 +26,12 @@
   --surface-toolbar: rgba(255, 252, 246, 0.9);
   --surface-toolbar-menu: rgba(255, 252, 246, 0.98);
   --surface-panel-header: rgba(255, 255, 255, 0.4);
-  --bg-grad-1: rgba(181, 87, 47, 0.12);
-  --bg-grad-2: rgba(90, 119, 96, 0.14);
-  --shadow: 0 20px 60px rgba(58, 38, 24, 0.08);
-}
-
-:root[data-theme='light'] {
-  --bg: #f6f8fc;
-  --panel: rgba(255, 255, 255, 0.92);
-  --panel-strong: #ffffff;
-  --panel-border: rgba(35, 48, 75, 0.12);
-  --ink: #1f2738;
-  --muted: #687388;
-  --accent: #2f69c7;
-  --accent-soft: rgba(47, 105, 199, 0.16);
-  --sidebar: rgba(236, 241, 250, 0.95);
-  --surface-control: rgba(255, 255, 255, 0.82);
-  --surface-input: rgba(255, 255, 255, 0.9);
-  --surface-card: rgba(255, 255, 255, 0.82);
-  --surface-card-strong: #ffffff;
-  --surface-toolbar: rgba(241, 246, 255, 0.92);
-  --surface-toolbar-menu: rgba(255, 255, 255, 0.99);
-  --surface-panel-header: rgba(246, 250, 255, 0.92);
-  --bg-grad-1: rgba(46, 115, 214, 0.1);
-  --bg-grad-2: rgba(82, 180, 154, 0.1);
-  --shadow: 0 16px 44px rgba(26, 40, 70, 0.1);
-}
-
-:root[data-theme='dark'] {
-  --bg: #111723;
-  --panel: rgba(24, 32, 47, 0.88);
-  --panel-strong: #1f2738;
-  --panel-border: rgba(219, 232, 255, 0.14);
-  --ink: #e8eefc;
-  --muted: #a3b0ca;
-  --accent: #76a8ff;
-  --accent-soft: rgba(118, 168, 255, 0.22);
-  --sidebar: rgba(23, 30, 44, 0.95);
-  --surface-control: rgba(34, 43, 63, 0.9);
-  --surface-input: rgba(28, 37, 55, 0.96);
-  --surface-card: rgba(31, 41, 60, 0.86);
-  --surface-card-strong: #27324a;
-  --surface-toolbar: rgba(21, 29, 43, 0.95);
-  --surface-toolbar-menu: rgba(25, 33, 49, 0.98);
-  --surface-panel-header: rgba(31, 40, 59, 0.88);
-  --bg-grad-1: rgba(69, 111, 186, 0.22);
-  --bg-grad-2: rgba(34, 87, 94, 0.2);
-  --shadow: 0 20px 50px rgba(5, 7, 13, 0.42);
+  --danger: #991b1b;
+  --danger-soft: #fee2e2;
+  --success: #065f46;
+  --success-soft: #d1fae5;
+  --shadow: 0 4px 12px rgba(58, 38, 24, 0.12);
+  --radius-control: 3px;
 }
 
 * {
@@ -86,10 +46,7 @@ body,
 }
 
 body {
-  background:
-    radial-gradient(circle at top left, var(--bg-grad-1), transparent 28%),
-    radial-gradient(circle at bottom right, var(--bg-grad-2), transparent 24%),
-    var(--bg);
+  background: var(--bg);
   color: var(--ink);
 }
 
@@ -121,8 +78,8 @@ button {
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding: 28px 22px;
+  gap: 14px;
+  padding: 12px;
   background: var(--sidebar);
   border-right: 1px solid var(--panel-border);
   min-width: 0;
@@ -167,7 +124,9 @@ button {
 }
 
 .sidebar-resizer:hover,
-.dual-resizer:hover {
+.sidebar-resizer:focus-visible,
+.dual-resizer:hover,
+.dual-resizer:focus-visible {
   background: color-mix(in oklab, var(--accent) 25%, transparent);
 }
 
@@ -179,7 +138,7 @@ button {
 .sidebar__brand h1,
 .toolbar-titlebar__title {
   margin: 0;
-  font-size: 2rem;
+  font-size: 1.4rem;
   font-weight: 600;
 }
 
@@ -198,6 +157,13 @@ button {
   margin: 10px 0 0;
   color: var(--muted);
   max-width: 26ch;
+}
+
+.brand-wordmark,
+.about-dialog__wordmark,
+.about-dialog__logo {
+  display: block;
+  color: var(--accent);
 }
 
 .sidebar__section {
@@ -224,7 +190,10 @@ button {
 .toolbar-button {
   cursor: pointer;
   border-radius: 999px;
-  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease,
+    border-color 140ms ease;
 }
 
 .ghost-button {
@@ -253,7 +222,7 @@ button {
 .note-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 2px;
   overflow: auto;
 }
 
@@ -266,7 +235,7 @@ button {
   width: 100%;
   border: 1px solid var(--panel-border);
   border-radius: 14px;
-  padding: 11px 14px;
+  padding: 7px 10px;
   background: var(--surface-input);
   color: var(--ink);
   outline: none;
@@ -278,7 +247,7 @@ button {
   align-items: flex-start;
   gap: 4px;
   width: 100%;
-  padding: 14px 15px;
+  padding: 8px 10px;
   text-align: left;
   border-radius: 18px;
   background: var(--surface-card);
@@ -287,9 +256,9 @@ button {
 }
 
 .note-card.is-active {
-  background: var(--surface-card-strong);
-  border-color: color-mix(in oklab, var(--accent) 35%, transparent);
-  box-shadow: var(--shadow);
+  background: var(--accent-soft);
+  border-color: transparent;
+  box-shadow: inset 2px 0 var(--accent);
 }
 
 .note-card__title {
@@ -303,6 +272,9 @@ button {
 }
 
 .note-context-menu {
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  overflow: auto;
   position: fixed;
   z-index: 60;
   display: flex;
@@ -318,20 +290,22 @@ button {
   mix-blend-mode: normal;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  box-shadow: 0 16px 30px rgba(58, 38, 24, 0.18);
+  box-shadow: var(--shadow);
 }
 
-.rich-editor-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 70;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.rich-editor-modal::backdrop {
   background: rgba(10, 12, 18, 0.25);
 }
 
+.rich-editor-modal:not([open]) {
+  display: none;
+}
+
 .rich-editor-modal {
+  margin: auto;
+  color: var(--ink);
+  max-height: calc(100vh - 36px);
+  overflow: auto;
   width: min(560px, calc(100vw - 36px));
   border: 1px solid var(--panel-border);
   border-radius: 16px;
@@ -360,8 +334,32 @@ button {
   padding: 10px 12px;
   resize: vertical;
   outline: none;
-  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
   font-size: 0.9rem;
+}
+
+.resource-dialog__input,
+.table-dialog__dimensions input {
+  width: 100%;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  background: var(--surface-input);
+  color: var(--ink);
+  padding: 10px 12px;
+  outline: none;
+}
+
+.table-dialog__dimensions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.table-dialog__dimensions label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.84rem;
 }
 
 .rich-editor-modal__actions {
@@ -427,7 +425,7 @@ button {
   min-height: 0;
   flex: 1;
   grid-template-columns: minmax(0, 1fr);
-  padding: 16px 18px 18px;
+  padding: 8px 8px 8px 0;
 }
 
 .workspace__body.is-dual {
@@ -447,14 +445,13 @@ button {
   min-height: 0;
   flex-direction: column;
   border: 1px solid var(--panel-border);
-  border-radius: 28px;
+  border-radius: var(--radius-control);
   background: var(--panel);
-  box-shadow: var(--shadow);
   overflow: hidden;
 }
 
 .panel__header {
-  padding: 16px 20px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--panel-border);
   background: var(--surface-panel-header);
   font-size: 0.95rem;
@@ -482,7 +479,7 @@ button {
   align-items: flex-start;
   gap: 10px;
   flex-wrap: wrap;
-  padding: 10px 14px 12px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--panel-border);
   background: var(--surface-toolbar);
   z-index: 20;
@@ -543,7 +540,8 @@ button {
 
 .document-editor__content {
   outline: none;
-  font-size: 1.08rem;
+  font-family: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
+  font-size: 17px;
 }
 
 .document-editor__content--editable {
@@ -680,7 +678,7 @@ button {
   padding: 0.12rem 0.36rem;
   border-radius: 0.38rem;
   background: rgba(29, 29, 27, 0.08);
-  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
   font-size: 0.92em;
 }
 
@@ -728,7 +726,7 @@ button {
   background: rgba(255, 255, 255, 0.08);
   color: #f8f4ec;
   outline: none;
-  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
   font-size: 0.85rem;
   appearance: none;
 }
@@ -743,7 +741,7 @@ button {
 .code-block__content {
   display: block;
   white-space: pre-wrap;
-  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
   font-size: 0.95rem;
 }
 
@@ -763,18 +761,39 @@ button {
   padding-left: 1.3rem;
 }
 
-.document-editor__content ul[data-type="taskList"] {
+.document-editor__content table {
+  width: 100%;
+  margin: 1rem 0;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.document-editor__content th,
+.document-editor__content td {
+  min-width: 80px;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--panel-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.document-editor__content th {
+  background: var(--surface-control);
+  font-weight: 700;
+}
+
+.document-editor__content ul[data-type='taskList'] {
   list-style: none;
   padding-left: 0.2rem;
 }
 
-.document-editor__content ul[data-type="taskList"] li {
+.document-editor__content ul[data-type='taskList'] li {
   display: flex;
   gap: 0.6rem;
   align-items: flex-start;
 }
 
-.document-editor__content ul[data-type="taskList"] li > label {
+.document-editor__content ul[data-type='taskList'] li > label {
   margin-top: 0.15rem;
 }
 
@@ -806,7 +825,7 @@ button {
   resize: vertical;
   background: #fffdf8;
   color: var(--ink);
-  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
   font-size: 0.9rem;
 }
 
@@ -830,7 +849,7 @@ button {
   margin: 0;
   white-space: pre-wrap;
   color: #8a2e22;
-  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
   font-size: 0.85rem;
 }
 
@@ -851,7 +870,7 @@ button {
   background: transparent;
   color: var(--ink);
   outline: none;
-  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
   font-size: 0.88rem;
 }
 
@@ -873,7 +892,7 @@ button {
   outline: none;
   background: transparent;
   color: var(--ink);
-  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
   font-size: 0.95rem;
   line-height: 1.7;
 }
@@ -896,6 +915,220 @@ button {
   .workspace__body.is-dual {
     grid-template-columns: 1fr;
   }
+}
+
+/* Compact application chrome, following Yapla's 3px control radius.
+   Document typography and all three existing theme choices remain independent. */
+.sidebar-collapsed__toggle,
+.ghost-button,
+.toolbar-button,
+.toolbar-menu__trigger,
+.toolbar-menu__content,
+.toolbar-menu__item,
+.note-search,
+.note-card,
+.note-context-menu,
+.note-context-menu__item,
+.rich-editor-modal,
+.rich-editor-modal__input,
+.resource-dialog__input,
+.table-dialog__dimensions input,
+.status-pill {
+  border-radius: var(--radius-control);
+}
+
+.ghost-button,
+.toolbar-button,
+.toolbar-menu__trigger {
+  min-height: 28px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.sidebar__eyebrow,
+.toolbar-titlebar__eyebrow,
+.panel__hint,
+.note-card__meta {
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.note-card:hover:not(.is-active),
+.ghost-button:hover:not(:disabled),
+.toolbar-button:hover:not(:disabled):not(.is-active),
+.toolbar-menu__trigger:hover:not(.is-disabled),
+.sidebar-collapsed__toggle:hover,
+.note-context-menu__item:hover {
+  background: var(--accent-soft);
+}
+
+.toolbar-button.is-active,
+.toolbar-menu__item.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+button:focus-visible,
+summary:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.status-pill {
+  padding: 4px 8px;
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.ghost-button--danger,
+.note-context-menu__item.is-danger,
+.rich-block__error {
+  color: var(--danger);
+}
+
+.ghost-button--danger {
+  background: var(--danger-soft);
+  border-color: color-mix(in oklab, var(--danger) 25%, transparent);
+}
+
+.rich-block,
+.document-editor__content :not(pre) > code {
+  background: var(--surface-panel-header);
+}
+
+.rich-block__source {
+  background: var(--surface-input);
+}
+
+.rich-block__preview {
+  background: var(--panel-strong);
+}
+
+/* Neutral surfaces and sky accents from Yapla; the warm Marktyp palette stays available. */
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #fafafa;
+  --panel: #ffffff;
+  --panel-strong: #ffffff;
+  --panel-border: #e4e4e7;
+  --ink: #18181b;
+  --muted: #52525b;
+  --accent: #0369a1;
+  --accent-soft: #e0f2fe;
+  --sidebar: #fafafa;
+  --surface-control: #ffffff;
+  --surface-input: #ffffff;
+  --surface-card: transparent;
+  --surface-card-strong: #f4f4f5;
+  --surface-toolbar: #ffffff;
+  --surface-toolbar-menu: #ffffff;
+  --surface-panel-header: #fafafa;
+  --shadow: 0 4px 12px rgba(24, 24, 27, 0.12);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #18181b;
+  --panel: #18181b;
+  --panel-strong: #27272a;
+  --panel-border: #3f3f46;
+  --ink: #f4f4f5;
+  --muted: #a1a1aa;
+  --accent: #38bdf8;
+  --accent-soft: #0c4a6e;
+  --sidebar: #18181b;
+  --surface-control: #27272a;
+  --surface-input: #27272a;
+  --surface-card: transparent;
+  --surface-card-strong: #27272a;
+  --surface-toolbar: #27272a;
+  --surface-toolbar-menu: #27272a;
+  --surface-panel-header: #27272a;
+  --danger: #fca5a5;
+  --danger-soft: #450a0a;
+  --success: #6ee7b7;
+  --success-soft: #064e3b;
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.delete-note-dialog__path,
+.delete-note-dialog__warning {
+  margin: 0;
+}
+
+.delete-note-dialog__path {
+  overflow-wrap: anywhere;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  font-size: 12px;
+}
+
+.delete-note-dialog__warning {
+  color: var(--danger);
+}
+
+.about-dialog {
+  width: min(420px, calc(100vw - 36px));
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.about-dialog::backdrop {
+  background: rgb(24 24 27 / 35%);
+}
+
+.about-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--panel-border);
+  background: var(--surface-panel-header);
+}
+
+.about-dialog__header h2,
+.about-dialog__body h1,
+.about-dialog__body p {
+  margin: 0;
+}
+
+.about-dialog__header h2 {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.about-dialog__body {
+  display: grid;
+  gap: 8px;
+  padding: 20px;
+}
+
+.about-dialog__brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.about-dialog__body h1 {
+  line-height: 0;
+}
+
+.about-dialog__body p {
+  color: var(--muted);
+}
+
+.about-dialog__version {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  font-size: 12px;
 }
 
 body.is-resizing {

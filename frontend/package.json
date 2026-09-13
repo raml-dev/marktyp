@@ -5,6 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "format": "node scripts/tooling.mjs format",
+    "check": "node scripts/tooling.mjs check",
+    "lint": "node scripts/tooling.mjs lint",
+    "test": "node --test tests/*.test.mjs",
     "build": "vite build",
     "preview": "vite preview"
   },
