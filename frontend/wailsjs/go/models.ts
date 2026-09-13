@@ -1,4 +1,4 @@
-export namespace app {
+export namespace document {
 	
 	export class AppConfig {
 	    version: number;
@@ -44,6 +44,7 @@ export namespace app {
 	    path: string;
 	    markdown: string;
 	    draftMarkdown?: string;
+	    hasDraft: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new DocumentState(source);
@@ -56,6 +57,7 @@ export namespace app {
 	        this.path = source["path"];
 	        this.markdown = source["markdown"];
 	        this.draftMarkdown = source["draftMarkdown"];
+	        this.hasDraft = source["hasDraft"];
 	    }
 	}
 	export class ExportHTMLRequest {

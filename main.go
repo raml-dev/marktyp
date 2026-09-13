@@ -2,8 +2,7 @@ package main
 
 import (
 	"embed"
-
-	internalapp "marktyp/internal/app"
+	"log/slog"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -14,7 +13,7 @@ import (
 var assets embed.FS
 
 func main() {
-	app := internalapp.New()
+	app := NewApp()
 
 	err := wails.Run(&options.App{
 		Title:     "marktyp",
@@ -26,7 +25,8 @@ func main() {
 			Assets: assets,
 		},
 		BackgroundColour: &options.RGBA{R: 244, G: 240, B: 229, A: 1},
-		OnStartup:        app.Startup,
+		OnStartup:        app.startup,
+		OnBeforeClose:    app.beforeClose,
 		Menu:             buildNativeMenu(app),
 		Bind: []interface{}{
 			app,
@@ -34,6 +34,6 @@ func main() {
 	})
 
 	if err != nil {
-		println("Error:", err.Error())
+		slog.Error("Application failed", "error", err)
 	}
 }

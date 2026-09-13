@@ -7,7 +7,7 @@ marktyp is a desktop Markdown editor built with Wails, Go, Svelte, and TypeScrip
 - Opens and saves local Markdown files
 - Keeps a small local note library with the last opened documents
 - Supports three editing modes: `Document`, `Source`, and `Dual`
-- Renders code blocks, Mermaid diagrams, inline math, and block math
+- Renders and edits code blocks, tables, Mermaid diagrams, inline math, and block math
 - Exports documents to HTML and PDF
 - Includes autosave, theme switching, and native desktop menus
 
@@ -15,9 +15,9 @@ marktyp is a desktop Markdown editor built with Wails, Go, Svelte, and TypeScrip
 
 Prerequisites:
 
-- Go `1.23+`
+- Go `1.26.1+`
 - Node.js and npm
-- Wails CLI (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`)
+- Wails CLI matching `go.mod` (`go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0`)
 
 Install dependencies:
 
@@ -39,7 +39,29 @@ Build the app:
 wails build
 ```
 
+## Architecture
+
+- `app.go` is the thin Wails RPC facade
+- `internal/document`, `internal/exporter`, and `internal/tools` contain backend logic
+- `frontend/src/lib/stores` owns frontend state, persistence, and Wails calls
+- `frontend/src/lib/components` contains focused UI components
+- `frontend/src/lib/utils` contains Markdown, rendering, and safety helpers
+
+## Verification
+
+```bash
+go test -race ./...
+go vet ./...
+go build ./...
+cd frontend
+npm run format
+npm run check
+npm run lint
+npm run build
+npm test
+```
+
 ## Notes
 
 - App state is stored in the user config directory under `marktyp`
-- PDF export uses a headless Chromium-based browser when available
+- PDF export uses a headless Chromium-based browser when available and falls back to the built-in PDF writer

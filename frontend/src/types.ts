@@ -30,6 +30,8 @@ export type DocumentState = {
   title: string;
   path: string;
   markdown: string;
+  draftMarkdown?: string;
+  hasDraft?: boolean;
 };
 
 export type WorkspaceData = {
