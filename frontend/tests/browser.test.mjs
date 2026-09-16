@@ -116,7 +116,7 @@ test(
       GetWorkspace:async()=>structuredClone(window.workspace),
       GetUpdatesFromRepo:async()=>({Release:{body:'## Changes\\n\\n- Better updates',created_at:'2026-09-01T00:00:00Z',html_url:'https://github.com/raml-dev/marktyp/releases/tag/v0.2.0',updated_at:'2026-09-01T00:00:00Z',name:'Marktyp 0.2.0',tag_name:'v0.2.0',prerelease:false}}),
       NewDocument:async()=>{window.newNoteCount=(window.newNoteCount||0)+1;const path='/managed/Untitled '+window.newNoteCount+'.md';const note=doc(path,'# Untitled\\n\\n');window.workspace.activeDoc=note;window.workspace.notes=[{id:'new-'+window.newNoteCount,path,title:'Untitled',updatedLabel:'Today'},...window.workspace.notes];return structuredClone(window.workspace);},
-      OpenDocument:async()=>{throw Error('open cancelled');},
+      OpenDocument:async()=>structuredClone(window.workspace),
       OpenDocumentAtPath:async(path)=>{window.workspace.activeDoc=doc(path,path==='/a.md'?'# Alpha':'# Beta'); return structuredClone(window.workspace);},
       RenameNote:async(request)=>{const rename=markdown=>{const lines=markdown.split('\\n');const index=lines.findIndex(line=>/^\\s*#\\s+/.test(line));if(index>=0)lines[index]='# '+request.title;else lines.unshift('# '+request.title,'');return lines.join('\\n');};if(window.workspace.activeDoc.path===request.path)window.workspace.activeDoc=doc(request.path,rename(window.workspace.activeDoc.markdown));window.workspace.notes=window.workspace.notes.map(note=>note.path===request.path?{...note,title:request.title}:note);return structuredClone(window.workspace);},
       SaveDocument:async(request)=>{await new Promise(r=>setTimeout(r,window.saveDelay||0)); window.workspace.activeDoc=doc(request.path,request.markdown);return structuredClone(window.workspace);},
@@ -245,8 +245,15 @@ test(
       await evaluate('window.saveDelay=0');
     });
     await t.test('cancelled open preserves current edits', async () => {
+      const statusBefore = await evaluate(
+        `(async()=>{const {editorState}=await import('/src/lib/stores/workspaceStore.ts');let value;const unsubscribe=editorState.subscribe(current=>value=current.statusMessage);unsubscribe();return value;})()`,
+      );
       await action('file:open');
       assert.equal(await evaluate(`document.querySelector('.source-editor').value`), '# Newer revision');
+      const statusAfter = await evaluate(
+        `(async()=>{const {editorState}=await import('/src/lib/stores/workspaceStore.ts');let value;const unsubscribe=editorState.subscribe(current=>value=current.statusMessage);unsubscribe();return value;})()`,
+      );
+      assert.equal(statusAfter, statusBefore);
     });
     await t.test('switching note flushes the latest source draft', async () => {
       await evaluate(

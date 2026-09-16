@@ -40,7 +40,8 @@
     aria-labelledby="rich-editor-title"
     class="rich-editor-modal__input"
     spellcheck={false}
-    on:keydown={keydown}></textarea>
+    on:keydown={keydown}
+  ></textarea>
   <div class="rich-editor-modal__actions">
     <button class="ghost-button ghost-button--small" on:click={oncancel} type="button">Cancel</button>
     <button class="ghost-button ghost-button--small" on:click={onapply} type="button">Apply</button>

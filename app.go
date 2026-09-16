@@ -150,7 +150,7 @@ func (a *App) OpenDocument() (WorkspaceData, error) {
 	}
 
 	if strings.TrimSpace(filePath) == "" {
-		return WorkspaceData{}, errors.New("open cancelled")
+		return a.store.GetWorkspace(a.info)
 	}
 
 	return a.store.OpenDocumentAtPath(filePath, a.info)
