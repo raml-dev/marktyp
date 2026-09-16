@@ -48,7 +48,7 @@ jobs:
             asset_name: marktyp-windows-amd64.zip
             package_cmd: Compress-Archive -Path build/bin/marktyp.exe -DestinationPath marktyp-windows-amd64.zip
           - name: macos-amd64
-            os: macos-13
+            os: macos-26-intel
             artifact_name: marktyp-macos-amd64
             asset_name: marktyp-macos-amd64.zip
             package_cmd: ditto -c -k --sequesterRsrc --keepParent build/bin/marktyp.app marktyp-macos-amd64.zip
@@ -100,7 +100,7 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          "$(go env GOPATH)/bin/wails" build -clean
+          "$(go env GOPATH)/bin/wails" build -clean -tags webkit2_41
 
       - name: Build app on macOS
         if: runner.os == 'macOS'
