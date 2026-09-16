@@ -99,9 +99,9 @@ async function navigate(operation: () => Promise<WorkspaceData>, label: string) 
     editorState.update((state) => ({ ...state, loading: false }));
   }
 }
-async function save(as = false, automatic = false) {
+async function save(as = false, automatic = false): Promise<boolean> {
   const state = get(editorState);
-  if (state.saving || state.loading || (automatic && !state.documentState.path)) return;
+  if (state.saving || state.loading || (automatic && !state.documentState.path)) return false;
   cancelTimers();
   const generation = documentGeneration;
   const request = {
@@ -114,7 +114,7 @@ async function save(as = false, automatic = false) {
     const workspace = await enqueue(() =>
       as ? backend.saveDocumentAs(request) : backend.saveDocument(request),
     );
-    if (disposed || generation !== documentGeneration) return;
+    if (disposed || generation !== documentGeneration) return false;
     editorState.update((current) => {
       const unchanged = current.sourceDraft === request.markdown;
       return {
@@ -126,6 +126,8 @@ async function save(as = false, automatic = false) {
             preferredMode: current.workspace.config.preferredMode,
             autosave: current.workspace.config.autosave,
             theme: current.workspace.config.theme,
+            checkForUpdates: current.workspace.config.checkForUpdates,
+            includePrereleaseUpdates: current.workspace.config.includePrereleaseUpdates,
           },
         },
         documentState: {
@@ -137,9 +139,11 @@ async function save(as = false, automatic = false) {
         statusMessage: automatic ? 'Autosaved' : 'Document saved',
       };
     });
+    return true;
   } catch (error) {
     if (automatic) blockedAutosaveText = request.markdown;
     message(`Save failed: ${String(error)}`);
+    return false;
   } finally {
     editorState.update((current) => ({ ...current, saving: false }));
   }
@@ -152,6 +156,8 @@ function preferences(patch: Partial<UpdatePreferencesRequest>) {
         preferredMode: state.mode,
         autosave: state.workspace.config.autosave,
         theme: state.workspace.config.theme,
+        checkForUpdates: state.workspace.config.checkForUpdates,
+        includePrereleaseUpdates: state.workspace.config.includePrereleaseUpdates,
         ...patch,
       });
       editorState.update((current) => ({ ...current, workspace: { ...current.workspace, config } }));
@@ -256,10 +262,7 @@ export const workspaceStore = {
   open: () => navigate(backend.openDocument, 'Document opened'),
   select: (path: string) => navigate(() => backend.openDocumentAtPath(path), 'Document selected'),
   async create() {
-    return navigate(
-      async () => ({ ...get(editorState).workspace, activeDoc: await backend.newDocument() }),
-      'New document',
-    );
+    return navigate(backend.newDocument, 'New note created');
   },
   save,
   preferences,
@@ -285,6 +288,31 @@ export const workspaceStore = {
     }
     cancelTimers();
     return navigateWithoutDraft(() => backend.deleteNote(path));
+  },
+  async rename(path: string, title: string) {
+    const nextTitle = title.trim();
+    if (!path || !nextTitle || get(editorState).loading || get(editorState).saving) return false;
+    if (path === get(editorState).documentState.path && !(await save())) return false;
+
+    editorState.update((current) => ({ ...current, loading: true }));
+    try {
+      await saveQueue;
+      const workspace = await backend.renameNote({ path, title: nextTitle });
+      if (disposed) return false;
+      if (path === get(editorState).documentState.path) applyWorkspace(workspace, 'Note renamed');
+      else
+        editorState.update((current) => ({
+          ...current,
+          workspace: { ...current.workspace, notes: workspace.notes },
+          statusMessage: 'Note renamed',
+        }));
+      return true;
+    } catch (error) {
+      message(`Unable to rename note: ${String(error)}`);
+      return false;
+    } finally {
+      editorState.update((current) => ({ ...current, loading: false }));
+    }
   },
   scheduleDraft(path: string, text: string, dirty: boolean) {
     clearTimeout(draftTimer);

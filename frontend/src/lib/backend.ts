@@ -4,7 +4,9 @@ import type {
   ExportHTMLRequest,
   ExportPDFRequest,
   SaveDocumentRequest,
+  RenameNoteRequest,
   UpdatePreferencesRequest,
+  UpdateResponse,
   WorkspaceData,
 } from '../types';
 import {
@@ -15,9 +17,11 @@ import {
   GetDocument,
   GetImagePreview,
   GetWorkspace,
+  GetUpdatesFromRepo,
   NewDocument,
   OpenDocument,
   OpenDocumentAtPath,
+  RenameNote,
   RevealNoteInFS,
   SaveDocument,
   SaveDocumentAs,
@@ -51,8 +55,12 @@ export async function getWorkspace(): Promise<WorkspaceData> {
   return normalizeWorkspace(await GetWorkspace());
 }
 
-export async function newDocument(): Promise<DocumentState> {
-  return NewDocument();
+export async function getUpdatesFromRepo(): Promise<UpdateResponse | null> {
+  return GetUpdatesFromRepo();
+}
+
+export async function newDocument(): Promise<WorkspaceData> {
+  return normalizeWorkspace(await NewDocument());
 }
 
 export async function openDocument(): Promise<WorkspaceData> {
@@ -65,6 +73,10 @@ export async function openDocumentAtPath(path: string): Promise<WorkspaceData> {
 
 export async function deleteNote(path: string): Promise<WorkspaceData> {
   return normalizeWorkspace(await DeleteNote(path));
+}
+
+export async function renameNote(request: RenameNoteRequest): Promise<WorkspaceData> {
+  return normalizeWorkspace(await RenameNote(request));
 }
 
 export async function revealNoteInFS(path: string): Promise<void> {

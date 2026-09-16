@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Marktyp</title>
+  <defs>
+    <mask id="cursor-cutout" maskUnits="userSpaceOnUse">
+      <rect width="512" height="512" fill="white" />
+      <rect width="28" height="112" x="242" y="272" fill="black" rx="14" />
+    </mask>
+  </defs>
+  <path
+    fill="#b5572f"
+    d="M64 64h96l96 144 96-144h96v384H336V256l-80 112-80-112v192H64V64Z"
+    mask="url(#cursor-cutout)"
+  />
+</svg>

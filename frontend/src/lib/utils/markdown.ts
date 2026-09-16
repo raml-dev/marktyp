@@ -106,11 +106,21 @@ export function titleFromMarkdown(markdown: string, fallback = 'Untitled'): stri
   for (const line of lines) {
     const trimmed = line.trim();
     if (trimmed.startsWith('# ')) {
-      return trimmed.slice(2).trim();
+      const title = normalizeMarkdownTitle(trimmed.slice(2));
+      if (title) return title;
     }
   }
 
   return fallback;
+}
+
+export function normalizeMarkdownTitle(title: string): string {
+  return title
+    .replace(/\s+/g, ' ')
+    .replace(/#+\s*$/, '')
+    .trim()
+    .replace(/^<+/, '')
+    .trim();
 }
 
 export function markdownToHtml(markdown: string): string {
@@ -121,6 +131,22 @@ export function markdownToHtml(markdown: string): string {
 export function htmlToMarkdown(html: string): string {
   const markdown = turndown.turndown(html);
   return cleanupMarkdown(markdown);
+}
+
+export function pastedMarkdownToHtml(text: string): string | null {
+  const normalized = text.replace(/\r\n?/g, '\n');
+  if (!normalized.trim() || !looksLikeMarkdown(normalized)) return null;
+  return markdownToHtml(normalized);
+}
+
+function looksLikeMarkdown(text: string): boolean {
+  return (
+    /^(?: {0,3})(?:#{1,6}\s|>|[-+*]\s|\d+[.)]\s|```|~~~|(?:-{3,}|\*{3,}|_{3,})\s*$)/m.test(text) ||
+    /^\s*\|.+\|\s*\n\s*\|?\s*:?-{3,}/m.test(text) ||
+    /!?(?:\[[^\]\n]+\])\([^\n)]+\)/.test(text) ||
+    /(?:\*\*|__|~~|`)[^\n]+(?:\*\*|__|~~|`)/.test(text) ||
+    /^\s*- \[[ xX]\]\s/m.test(text)
+  );
 }
 
 function normalizeSpecialMarkdown(markdown: string): string {

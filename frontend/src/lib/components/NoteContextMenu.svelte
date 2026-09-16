@@ -4,6 +4,7 @@
   export let y: number;
   export let onclose: () => void;
   export let onreveal: () => void;
+  export let onrename: () => void;
   export let onhtml: () => void;
   export let onpdf: () => void;
   export let ondelete: () => void;
@@ -38,6 +39,9 @@
   on:keydown={keydown}
   style={`left: ${x}px; top: ${y}px;`}
 >
+  <button class="note-context-menu__item" role="menuitem" on:click={() => run(onrename)} type="button"
+    >Rename</button
+  >
   <button class="note-context-menu__item" role="menuitem" on:click={() => run(onreveal)} type="button"
     >Reveal In Files</button
   >

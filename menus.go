@@ -1,11 +1,18 @@
 package main
 
 import (
+	"runtime"
+
 	"github.com/wailsapp/wails/v2/pkg/menu"
 )
 
 func buildNativeMenu(app *App) *menu.Menu {
 	mainMenu := menu.NewMenu()
+	if runtime.GOOS == "darwin" {
+		// Supplying a custom menu disables Wails' default macOS menu. Restore the
+		// native application role so standard application shortcuts keep working.
+		mainMenu.Append(menu.AppMenu())
+	}
 
 	fileMenu := mainMenu.AddSubmenu("File")
 	fileMenu.AddText("New", nil, func(_ *menu.CallbackData) {
@@ -25,6 +32,12 @@ func buildNativeMenu(app *App) *menu.Menu {
 	fileMenu.AddText("Delete Note", nil, func(_ *menu.CallbackData) {
 		app.emitMenuAction("file:delete")
 	})
+
+	if runtime.GOOS == "darwin" {
+		// The native Edit role owns Cmd+X/C/V/A and the corresponding responder
+		// chain. Without it, WebKit never receives Cmd+V in a packaged app.
+		mainMenu.Append(menu.EditMenu())
+	}
 
 	exportMenu := mainMenu.AddSubmenu("Export")
 	exportMenu.AddText("Export HTML", nil, func(_ *menu.CallbackData) {
@@ -64,6 +77,10 @@ func buildNativeMenu(app *App) *menu.Menu {
 	aboutMenu.AddText("Marktyp", nil, func(_ *menu.CallbackData) {
 		app.emitMenuAction("about:open")
 	})
+
+	if runtime.GOOS == "darwin" {
+		mainMenu.Append(menu.WindowMenu())
+	}
 
 	return mainMenu
 }

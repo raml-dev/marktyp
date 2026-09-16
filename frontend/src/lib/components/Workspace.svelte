@@ -7,8 +7,11 @@
   import TableDialog from './TableDialog.svelte';
   import AboutDialog from './AboutDialog.svelte';
   import DeleteNoteDialog from './DeleteNoteDialog.svelte';
+  import UpdateBanner from './UpdateBanner.svelte';
+  import RenameNoteDialog from './RenameNoteDialog.svelte';
   let documentEditor: DocumentEditor | null = null;
   import { editorState, workspaceStore, normalizeMode } from '../stores/workspaceStore';
+  import { updateStore } from '../stores/updateStore';
 
   import { onMount } from 'svelte';
 
@@ -42,6 +45,7 @@
   let tableColumns = 3;
   let aboutOpen = false;
   let pendingDeletePath: string | null = null;
+  let renameNote: NoteSummary | null = null;
 
   $: hasSourceDraftChanges = $editorState.sourceDraft !== $editorState.markdown;
   $: activeNote =
@@ -82,7 +86,10 @@
   );
 
   onMount(() => {
-    void workspaceStore.load().then(resetEditorSession);
+    void workspaceStore.load().then(() => {
+      resetEditorSession();
+      void updateStore.init();
+    });
 
     const unsubscribe = workspaceStore.listen((action: string) => {
       switch (action) {
@@ -281,6 +288,17 @@
 
   function handleDeleteActiveNote() {
     requestDeleteNote($editorState.documentState.path);
+  }
+
+  function requestRenameNote(note: NoteSummary | null) {
+    noteContextMenu = null;
+    renameNote = note;
+  }
+
+  async function confirmRenameNote(title: string) {
+    const note = renameNote;
+    renameNote = null;
+    if (note) await workspaceStore.rename(note.path, title);
   }
 
   function handleExportNoteHTML(path: string) {
@@ -512,6 +530,7 @@
   inert={$editorState.loading}
   aria-busy={$editorState.loading || $editorState.saving || $editorState.exporting}
 >
+  <UpdateBanner />
   <div class="workspace-toolbar">
     <div class="toolbar-titlebar">
       <div class="toolbar-titlebar__meta">
@@ -573,6 +592,7 @@
       ontoggle={toggleSidebar}
       oncreate={handleNewDocument}
       ondelete={handleDeleteActiveNote}
+      onrename={() => requestRenameNote(activeNote)}
       onselect={handleSelectNote}
       oncontextmenu={handleNoteContextMenu}
     />
@@ -641,6 +661,14 @@
     />
   {/if}
 
+  {#if renameNote}
+    <RenameNoteDialog
+      title={renameNote.title}
+      onconfirm={confirmRenameNote}
+      oncancel={() => (renameNote = null)}
+    />
+  {/if}
+
   {#if resourceDialog}
     <ResourceDialog
       kind={resourceDialog}
@@ -665,6 +693,7 @@
       x={noteContextMenu.x}
       y={noteContextMenu.y}
       onclose={() => (noteContextMenu = null)}
+      onrename={() => requestRenameNote(noteContextMenu?.note ?? null)}
       onreveal={() => handleRevealNoteInFS(path)}
       onhtml={() => handleExportNoteHTML(path)}
       onpdf={() => handleExportNotePDF(path)}

@@ -8,6 +8,7 @@
   export let ontoggle: () => void;
   export let oncreate: () => void;
   export let ondelete: () => void;
+  export let onrename: () => void;
   export let onselect: (path: string) => void;
   export let oncontextmenu: (event: MouseEvent, note: NoteSummary) => void;
 </script>
@@ -24,7 +25,10 @@
       >
     </div>
   {:else}
-    <div class="sidebar__collapse-row">
+    <div class="sidebar__header">
+      <div class="sidebar__brand">
+        <h1><MarktypWordmark size={22} className="brand-wordmark" /></h1>
+      </div>
       <button
         class="sidebar-collapsed__toggle"
         on:click={ontoggle}
@@ -33,14 +37,13 @@
         aria-expanded="true">«</button
       >
     </div>
-    <div class="sidebar__brand">
-      <h1><MarktypWordmark size={22} className="brand-wordmark" /></h1>
-    </div>
     <div class="sidebar__section">
       <div class="sidebar__section-header">
         <span>Recent notes</span>
         <div class="sidebar__section-actions">
           <button class="ghost-button" on:click={oncreate} type="button">New</button>
+          <button class="ghost-button" disabled={!activePath} on:click={onrename} type="button">Rename</button
+          >
           <button
             class="ghost-button ghost-button--danger"
             disabled={!activePath}

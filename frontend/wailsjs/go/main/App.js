@@ -30,6 +30,10 @@ export function GetImagePreview(arg1, arg2) {
   return window['go']['main']['App']['GetImagePreview'](arg1, arg2);
 }
 
+export function GetUpdatesFromRepo() {
+  return window['go']['main']['App']['GetUpdatesFromRepo']();
+}
+
 export function GetWorkspace() {
   return window['go']['main']['App']['GetWorkspace']();
 }
@@ -44,6 +48,10 @@ export function OpenDocument() {
 
 export function OpenDocumentAtPath(arg1) {
   return window['go']['main']['App']['OpenDocumentAtPath'](arg1);
+}
+
+export function RenameNote(arg1) {
+  return window['go']['main']['App']['RenameNote'](arg1);
 }
 
 export function RevealNoteInFS(arg1) {

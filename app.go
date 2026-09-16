@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"marktyp/internal/appinfo"
 	"marktyp/internal/document"
 	"marktyp/internal/exporter"
 	"marktyp/internal/tools"
@@ -18,6 +19,7 @@ type AppInfo = document.AppInfo
 type WorkspaceData = document.WorkspaceData
 type DocumentState = document.DocumentState
 type SaveDocumentRequest = document.SaveDocumentRequest
+type RenameNoteRequest = document.RenameNoteRequest
 type UpdatePreferencesRequest = document.UpdatePreferencesRequest
 type AppConfig = document.AppConfig
 type ExportHTMLRequest = document.ExportHTMLRequest
@@ -31,15 +33,18 @@ type App struct {
 	store       *document.Store
 	exporter    *exporter.Exporter
 	info        AppInfo
+	updates     *appinfo.DiscoveryClient
 	quitAllowed atomic.Bool
 }
 
 // NewApp constructs the Wails RPC facade and its domain services.
 func NewApp() *App {
+	info := appinfo.FromWailsConfig(wailsJSON)
 	return &App{
 		store:    document.NewStore(),
 		exporter: exporter.NewExporter(),
-		info:     document.DefaultAppInfo(),
+		info:     info,
+		updates:  appinfo.NewDiscoveryClient(info.GHLink),
 	}
 }
 
@@ -77,6 +82,38 @@ func (a *App) GetAppInfo() AppInfo {
 	return a.info
 }
 
+// GetUpdatesFromRepo checks GitHub for a newer eligible Marktyp release.
+func (a *App) GetUpdatesFromRepo() (*appinfo.GitHubResponse, error) {
+	if a.updates == nil {
+		return nil, errors.New("update discovery service not initialized")
+	}
+	if a.store == nil {
+		return nil, errors.New("store not initialized")
+	}
+
+	config, err := a.store.GetConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := a.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	response, err := a.updates.GetUpdatesFromRepo(ctx, a.info.ProductVersion, config.IncludePrereleaseUpdates)
+	if err != nil {
+		if a.ctx != nil {
+			wruntime.EventsEmit(a.ctx, "updates:error", err.Error())
+		}
+		return nil, err
+	}
+	if response != nil && response.Release != nil && a.ctx != nil {
+		wruntime.EventsEmit(a.ctx, "updates:available", response)
+	}
+
+	return response, nil
+}
+
 // GetWorkspace loads configuration, recent notes, and the active document.
 func (a *App) GetWorkspace() (WorkspaceData, error) {
 	if a.store == nil {
@@ -85,9 +122,12 @@ func (a *App) GetWorkspace() (WorkspaceData, error) {
 	return a.store.GetWorkspace(a.info)
 }
 
-// NewDocument returns an unsaved document template.
-func (a *App) NewDocument() DocumentState {
-	return document.NewDocument()
+// NewDocument creates and activates a distinct managed note.
+func (a *App) NewDocument() (WorkspaceData, error) {
+	if a.store == nil {
+		return WorkspaceData{}, errors.New("store not initialized")
+	}
+	return a.store.CreateDocument(a.info)
 }
 
 // OpenDocument prompts for a Markdown file and makes it active.
@@ -160,6 +200,14 @@ func (a *App) SaveDocument(request SaveDocumentRequest) (WorkspaceData, error) {
 	}
 
 	return a.store.SaveDocument(request, a.info)
+}
+
+// RenameNote updates the Markdown title of a saved note.
+func (a *App) RenameNote(request RenameNoteRequest) (WorkspaceData, error) {
+	if a.store == nil {
+		return WorkspaceData{}, errors.New("store not initialized")
+	}
+	return a.store.RenameNote(request, a.info)
 }
 
 // SaveDraft persists recoverable unsaved content for a saved note.
