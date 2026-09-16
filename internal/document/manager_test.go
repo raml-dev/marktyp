@@ -1,12 +1,50 @@
 package document
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
 	"testing"
 )
+
+func TestConfigDefaultsEnableStableUpdateChecks(t *testing.T) {
+	store, _ := testStore(t)
+	config, err := store.GetConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if config.Version != 2 || !config.CheckForUpdates || config.IncludePrereleaseUpdates {
+		t.Fatalf("unexpected default update settings: %+v", config)
+	}
+}
+
+func TestLegacyConfigEnablesUpdateChecksDuringMigration(t *testing.T) {
+	store, _ := testStore(t)
+	if err := store.ensureStorage(); err != nil {
+		t.Fatal(err)
+	}
+	path, err := store.configPath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacy, err := json.Marshal(AppConfig{Version: 1, PreferredMode: "Dual", Theme: AppName})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, legacy, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	config, err := store.GetConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if config.Version != 2 || !config.CheckForUpdates || config.PreferredMode != "Dual" {
+		t.Fatalf("legacy config was not migrated: %+v", config)
+	}
+}
 
 func testStore(t *testing.T) (*Store, string) {
 	t.Helper()

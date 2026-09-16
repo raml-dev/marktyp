@@ -6,8 +6,18 @@
   "frontend:build": "npm run build",
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
+  "info": {
+    "companyName": "raml-dev",
+    "productName": "marktyp",
+    "productVersion": "dev",
+    "copyright": "Copyright by raml-dev 2026-present, see license terms",
+    "license": "GNU AGPL-3.0-only license",
+    "docsLink": "",
+    "ghLink": "https://github.com/raml-dev/marktyp",
+    "orgLink": "https://github.com/raml-dev"
+  },
   "author": {
-    "name": "mat",
+    "name": "raml-dev",
     "email": "matteo.stabile2@gmail.com"
   }
 }

@@ -2,7 +2,7 @@
   import { onMount, tick } from 'svelte';
   import RichEditorModal from './RichEditorModal.svelte';
   import { editorState, workspaceStore } from '../stores/workspaceStore';
-  import { markdownToHtml, htmlToMarkdown } from '../utils/markdown';
+  import { markdownToHtml, htmlToMarkdown, pastedMarkdownToHtml } from '../utils/markdown';
   import { createPreviewRenderer } from '../utils/previewRenderer';
   import { sanitizeHtml } from '../utils/sanitizeHtml';
   const previewRenderer = createPreviewRenderer((source) => workspaceStore.imagePreview(source));
@@ -660,10 +660,13 @@
       `${html}<span data-marktyp-caret="${markerId}">\u200b</span>`,
     );
     range.deleteContents();
-    const isTable = /^\s*<table[\s>]/i.test(html);
+    const isBlock =
+      /^\s*<(?:blockquote|div|h[1-6]|hr|marktyp-math-block|marktyp-mermaid|ol|p|pre|table|ul)[\s>]/i.test(
+        html,
+      );
     const rangeElement =
       range.startContainer instanceof Element ? range.startContainer : range.startContainer.parentElement;
-    const paragraph = isTable ? rangeElement?.closest('p, h1, h2, h3, h4, h5, h6, blockquote') : null;
+    const paragraph = isBlock ? rangeElement?.closest('p, h1, h2, h3, h4, h5, h6, blockquote') : null;
     if (paragraph && root.contains(paragraph)) {
       const tailRange = document.createRange();
       tailRange.setStart(range.startContainer, range.startOffset);
@@ -673,11 +676,8 @@
       const trailing = paragraph.cloneNode(false) as HTMLElement;
       trailing.append(tail);
       paragraph.after(fragment);
-      if (trailing.textContent || trailing.querySelector('img, code, br')) {
-        const insertedTable = paragraph.nextElementSibling;
-        const insertionEnd = insertedTable?.nextElementSibling;
-        insertionEnd?.after(trailing);
-      }
+      if (trailing.textContent || trailing.querySelector('img, code, br'))
+        root.querySelector(`[data-marktyp-caret="${markerId}"]`)?.after(trailing);
     } else {
       range.insertNode(fragment);
     }
@@ -708,7 +708,9 @@
     refreshCurrentSnapshot();
     const html = event.clipboardData?.getData('text/html');
     const text = event.clipboardData?.getData('text/plain') ?? '';
-    if (html) insertDocumentHtml(sanitizeHtml(html));
+    const renderedMarkdown = pastedMarkdownToHtml(text);
+    if (renderedMarkdown) insertDocumentHtml(renderedMarkdown);
+    else if (html) insertDocumentHtml(sanitizeHtml(html));
     else insertText(text);
   }
 

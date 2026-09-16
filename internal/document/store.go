@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -121,6 +122,63 @@ func NewDocument() DocumentState {
 	}
 }
 
+func (s *Store) createDocument(appInfo AppInfo) (WorkspaceData, error) {
+	if err := s.ensureStorage(); err != nil {
+		return WorkspaceData{}, err
+	}
+
+	baseDir, err := s.configDir()
+	if err != nil {
+		return WorkspaceData{}, err
+	}
+	notesDir := filepath.Join(baseDir, "notes")
+	var path string
+	for index := 1; ; index++ {
+		name := "Untitled.md"
+		if index > 1 {
+			name = "Untitled " + strconv.Itoa(index) + ".md"
+		}
+		candidate := filepath.Join(notesDir, name)
+		file, openErr := os.OpenFile(candidate, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+		if errors.Is(openErr, os.ErrExist) {
+			continue
+		}
+		if openErr != nil {
+			return WorkspaceData{}, openErr
+		}
+		if _, writeErr := file.WriteString("# Untitled\n\n"); writeErr != nil {
+			file.Close()
+			os.Remove(candidate)
+			return WorkspaceData{}, writeErr
+		}
+		if syncErr := file.Sync(); syncErr != nil {
+			file.Close()
+			os.Remove(candidate)
+			return WorkspaceData{}, syncErr
+		}
+		if closeErr := file.Close(); closeErr != nil {
+			os.Remove(candidate)
+			return WorkspaceData{}, closeErr
+		}
+		path = candidate
+		break
+	}
+
+	if err := s.upsertNote(path, true, ""); err != nil {
+		os.Remove(path)
+		return WorkspaceData{}, err
+	}
+	config, err := s.readConfig()
+	if err != nil {
+		return WorkspaceData{}, err
+	}
+	config.LastOpenedPath = path
+	if err := s.writeConfig(config); err != nil {
+		return WorkspaceData{}, err
+	}
+	return s.getWorkspace(appInfo)
+}
+
 func (s *Store) openDocumentAtPath(path string, appInfo AppInfo) (WorkspaceData, error) {
 	if err := s.ensureStorage(); err != nil {
 		return WorkspaceData{}, err
@@ -180,6 +238,55 @@ func (s *Store) saveDocument(request SaveDocumentRequest, appInfo AppInfo) (Work
 
 	config.LastOpenedPath = path
 	if err := s.writeConfig(config); err != nil {
+		return WorkspaceData{}, err
+	}
+
+	return s.getWorkspace(appInfo)
+}
+
+func (s *Store) renameNote(request RenameNoteRequest, appInfo AppInfo) (WorkspaceData, error) {
+	if err := s.ensureStorage(); err != nil {
+		return WorkspaceData{}, err
+	}
+
+	path := strings.TrimSpace(request.Path)
+	title := normalizeTitle(request.Title)
+	if path == "" {
+		return WorkspaceData{}, errors.New("missing note path")
+	}
+	if title == "" {
+		return WorkspaceData{}, errors.New("note title cannot be empty")
+	}
+
+	db, err := s.readNotesDB()
+	if err != nil {
+		return WorkspaceData{}, err
+	}
+	noteIndex := -1
+	for index := range db.Notes {
+		if db.Notes[index].Path == path {
+			noteIndex = index
+			break
+		}
+	}
+	if noteIndex < 0 {
+		return WorkspaceData{}, errors.New("note not found")
+	}
+
+	markdown, err := os.ReadFile(path)
+	if err != nil {
+		return WorkspaceData{}, err
+	}
+	if err := tools.WriteFileAtomic(path, []byte(replaceMarkdownTitle(string(markdown), title)), 0o644); err != nil {
+		return WorkspaceData{}, err
+	}
+
+	if draft := db.Notes[noteIndex].DraftMarkdown; draft != nil {
+		renamedDraft := replaceMarkdownTitle(*draft, title)
+		db.Notes[noteIndex].DraftMarkdown = &renamedDraft
+	}
+	db.Notes[noteIndex].UpdatedAt = time.Now().Format(time.RFC3339)
+	if err := s.writeNotesDB(db); err != nil {
 		return WorkspaceData{}, err
 	}
 
@@ -305,6 +412,8 @@ func (s *Store) updatePreferences(request UpdatePreferencesRequest) (AppConfig, 
 		config.PreferredMode = request.PreferredMode
 	}
 	config.Autosave = request.Autosave
+	config.CheckForUpdates = request.CheckForUpdates
+	config.IncludePrereleaseUpdates = request.IncludePrereleaseUpdates
 	switch strings.TrimSpace(request.Theme) {
 	case "light", "dark", AppName:
 		config.Theme = request.Theme
@@ -539,10 +648,11 @@ func (s *Store) readConfig() (AppConfig, error) {
 
 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
 		config := AppConfig{
-			Version:       1,
-			PreferredMode: "Document",
-			Autosave:      false,
-			Theme:         AppName,
+			Version:         2,
+			PreferredMode:   "Document",
+			Autosave:        false,
+			Theme:           AppName,
+			CheckForUpdates: true,
 		}
 
 		if writeErr := s.writeConfig(config); writeErr != nil {
@@ -563,6 +673,13 @@ func (s *Store) readConfig() (AppConfig, error) {
 	}
 	if strings.TrimSpace(config.Theme) == "" {
 		config.Theme = AppName
+	}
+	if config.Version < 2 {
+		config.Version = 2
+		config.CheckForUpdates = true
+		if err := s.writeConfig(config); err != nil {
+			return AppConfig{}, err
+		}
 	}
 	return config, nil
 }
@@ -638,13 +755,42 @@ func titleFromMarkdown(path string, markdown string) string {
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "# ") {
-			title := strings.TrimSpace(strings.TrimPrefix(trimmed, "# "))
+			title := normalizeTitle(strings.TrimPrefix(trimmed, "# "))
 			if title != "" {
 				return title
 			}
 		}
 	}
 	return titleFromPath(path)
+}
+
+func replaceMarkdownTitle(markdown string, title string) string {
+	lineEnding := "\n"
+	if strings.Contains(markdown, "\r\n") {
+		lineEnding = "\r\n"
+	}
+	lines := strings.Split(strings.ReplaceAll(markdown, "\r\n", "\n"), "\n")
+	for index, line := range lines {
+		if strings.HasPrefix(strings.TrimSpace(line), "# ") {
+			lines[index] = "# " + title
+			return strings.Join(lines, lineEnding)
+		}
+	}
+
+	body := strings.TrimLeft(strings.Join(lines, lineEnding), "\r\n")
+	if body == "" {
+		return "# " + title + lineEnding + lineEnding
+	}
+	return "# " + title + lineEnding + lineEnding + body
+}
+
+func normalizeTitle(title string) string {
+	title = strings.Join(strings.Fields(title), " ")
+	title = strings.TrimSpace(strings.TrimRight(title, "#"))
+	// A block pasted into a heading can leave an unmatched HTML opener in old
+	// documents. It is presentation noise, not part of the note title.
+	title = strings.TrimSpace(strings.TrimLeft(title, "<"))
+	return title
 }
 
 func humanTime(value string) string {

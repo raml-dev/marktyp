@@ -1,23 +1,19 @@
 package document
 
-const (
-	AppName    = "marktyp"
-	AppVersion = "0.1.0"
-)
+import "marktyp/internal/appinfo"
 
-type AppInfo struct {
-	Name    string   `json:"name"`
-	Tagline string   `json:"tagline"`
-	Version string   `json:"version"`
-	Modes   []string `json:"modes"`
-}
+const AppName = "marktyp"
+
+type AppInfo = appinfo.AppInfo
 
 type AppConfig struct {
-	Version        int    `json:"version"`
-	PreferredMode  string `json:"preferredMode"`
-	LastOpenedPath string `json:"lastOpenedPath"`
-	Autosave       bool   `json:"autosave"`
-	Theme          string `json:"theme"`
+	Version                  int    `json:"version"`
+	PreferredMode            string `json:"preferredMode"`
+	LastOpenedPath           string `json:"lastOpenedPath"`
+	Autosave                 bool   `json:"autosave"`
+	Theme                    string `json:"theme"`
+	CheckForUpdates          bool   `json:"checkForUpdates"`
+	IncludePrereleaseUpdates bool   `json:"includePrereleaseUpdates"`
 }
 
 type NoteSummary struct {
@@ -51,10 +47,17 @@ type SaveDocumentRequest struct {
 	Markdown string `json:"markdown"`
 }
 
+type RenameNoteRequest struct {
+	Path  string `json:"path"`
+	Title string `json:"title"`
+}
+
 type UpdatePreferencesRequest struct {
-	PreferredMode string `json:"preferredMode"`
-	Autosave      bool   `json:"autosave"`
-	Theme         string `json:"theme"`
+	PreferredMode            string `json:"preferredMode"`
+	Autosave                 bool   `json:"autosave"`
+	Theme                    string `json:"theme"`
+	CheckForUpdates          bool   `json:"checkForUpdates"`
+	IncludePrereleaseUpdates bool   `json:"includePrereleaseUpdates"`
 }
 
 type ExportHTMLRequest struct {
@@ -69,10 +72,5 @@ type ExportPDFRequest struct {
 }
 
 func DefaultAppInfo() AppInfo {
-	return AppInfo{
-		Name:    AppName,
-		Tagline: "Editor documentale visuale con Markdown sotto il cofano",
-		Version: AppVersion,
-		Modes:   []string{"Document", "Source", "Dual"},
-	}
+	return appinfo.FromWailsConfig(nil)
 }

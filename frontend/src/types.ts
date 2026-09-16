@@ -11,10 +11,13 @@ export type NoteSummary = {
 };
 
 export type AppInfo = {
-  name: string;
-  tagline: string;
-  version: string;
-  modes: string[];
+  companyName: string;
+  productName: string;
+  productVersion: string;
+  license: string;
+  docsLink: string;
+  ghLink: string;
+  orgLink: string;
 };
 
 export type AppConfig = {
@@ -23,6 +26,8 @@ export type AppConfig = {
   lastOpenedPath: string;
   autosave: boolean;
   theme: AppTheme;
+  checkForUpdates: boolean;
+  includePrereleaseUpdates: boolean;
 };
 
 export type DocumentState = {
@@ -47,6 +52,11 @@ export type SaveDocumentRequest = {
   markdown: string;
 };
 
+export type RenameNoteRequest = {
+  path: string;
+  title: string;
+};
+
 export type ExportHTMLRequest = {
   title: string;
   html: string;
@@ -62,4 +72,20 @@ export type UpdatePreferencesRequest = {
   preferredMode: string;
   autosave: boolean;
   theme: AppTheme;
+  checkForUpdates: boolean;
+  includePrereleaseUpdates: boolean;
+};
+
+export type GitHubRelease = {
+  body: string;
+  created_at: string;
+  html_url: string;
+  updated_at: string;
+  name: string;
+  tag_name: string;
+  prerelease: boolean;
+};
+
+export type UpdateResponse = {
+  Release?: GitHubRelease | null;
 };

@@ -111,12 +111,14 @@ test(
     window.confirm = () => true;
     window.runtime = {EventsOnMultiple(name, fn) { window.events[name] = fn; return () => delete window.events[name]; }, BrowserOpenURL(url) { window.openedURL = url; }};
     const doc = (path, markdown) => ({id:path,title:markdown.split('\\n')[0].replace(/^# /,''),path,markdown,hasDraft:false});
-    window.workspace = {appInfo:{name:'marktyp',version:'0.1.0',tagline:'Test',modes:['Document','Source','Dual']}, config:{version:1,theme:'marktyp',preferredMode:'Document',autosave:false,lastOpenedPath:'/a.md'}, notes:[{id:'a',path:'/a.md',title:'Alpha',updatedLabel:'Today'},{id:'b',path:'/b.md',title:'Beta',updatedLabel:'Today'}],activeDoc:doc('/a.md','# Alpha\\n\\nInitial text')};
+    window.workspace = {appInfo:{companyName:'raml-dev',productName:'marktyp',productVersion:'dev',license:'GNU AGPL-3.0-only license',docsLink:'',ghLink:'https://github.com/raml-dev/marktyp',orgLink:'https://github.com/raml-dev'}, config:{version:2,theme:'marktyp',preferredMode:'Document',autosave:false,lastOpenedPath:'/a.md',checkForUpdates:true,includePrereleaseUpdates:false}, notes:[{id:'a',path:'/a.md',title:'Alpha',updatedLabel:'Today'},{id:'b',path:'/b.md',title:'Beta',updatedLabel:'Today'}],activeDoc:doc('/a.md','# Alpha\\n\\nInitial text')};
     window.go = {main:{App:{
       GetWorkspace:async()=>structuredClone(window.workspace),
-      NewDocument:async()=>doc('','# Untitled\\n\\n'),
+      GetUpdatesFromRepo:async()=>({Release:{body:'## Changes\\n\\n- Better updates',created_at:'2026-09-01T00:00:00Z',html_url:'https://github.com/raml-dev/marktyp/releases/tag/v0.2.0',updated_at:'2026-09-01T00:00:00Z',name:'Marktyp 0.2.0',tag_name:'v0.2.0',prerelease:false}}),
+      NewDocument:async()=>{window.newNoteCount=(window.newNoteCount||0)+1;const path='/managed/Untitled '+window.newNoteCount+'.md';const note=doc(path,'# Untitled\\n\\n');window.workspace.activeDoc=note;window.workspace.notes=[{id:'new-'+window.newNoteCount,path,title:'Untitled',updatedLabel:'Today'},...window.workspace.notes];return structuredClone(window.workspace);},
       OpenDocument:async()=>{throw Error('open cancelled');},
       OpenDocumentAtPath:async(path)=>{window.workspace.activeDoc=doc(path,path==='/a.md'?'# Alpha':'# Beta'); return structuredClone(window.workspace);},
+      RenameNote:async(request)=>{const rename=markdown=>{const lines=markdown.split('\\n');const index=lines.findIndex(line=>/^\\s*#\\s+/.test(line));if(index>=0)lines[index]='# '+request.title;else lines.unshift('# '+request.title,'');return lines.join('\\n');};if(window.workspace.activeDoc.path===request.path)window.workspace.activeDoc=doc(request.path,rename(window.workspace.activeDoc.markdown));window.workspace.notes=window.workspace.notes.map(note=>note.path===request.path?{...note,title:request.title}:note);return structuredClone(window.workspace);},
       SaveDocument:async(request)=>{await new Promise(r=>setTimeout(r,window.saveDelay||0)); window.workspace.activeDoc=doc(request.path,request.markdown);return structuredClone(window.workspace);},
       SaveDocumentAs:async(request)=>{window.workspace.activeDoc=doc('/saved.md',request.markdown);return structuredClone(window.workspace);},
       SaveDraft:async(path,markdown)=>{window.savedDrafts.push({path,markdown});},
@@ -153,6 +155,31 @@ test(
       );
       await delay(30);
     };
+
+    await t.test('update banner shows release notes and can be dismissed', async () => {
+      await waitFor(() => evaluate(`Boolean(document.querySelector('.update-banner'))`));
+      assert.match(await evaluate(`document.querySelector('.update-banner').textContent`), /v0\.2\.0/);
+      await evaluate(`document.querySelector('.update-banner__link').click()`);
+      assert.ok(await evaluate(`document.querySelector('.release-notes-dialog').open`));
+      assert.match(
+        await evaluate(`document.querySelector('.release-notes-dialog__content').textContent`),
+        /Better updates/,
+      );
+      await evaluate(`document.querySelector('.release-notes-dialog .toolbar-button').click()`);
+      await evaluate(`document.querySelectorAll('.update-banner .ghost-button')[1].click()`);
+      assert.equal(await evaluate(`Boolean(document.querySelector('.update-banner'))`), false);
+    });
+
+    await t.test('About exposes release, license, source, and author metadata', async () => {
+      await action('about:open');
+      const aboutText = await evaluate(`document.querySelector('.about-dialog__body').textContent`);
+      assert.match(aboutText, /version\s+dev/);
+      assert.match(aboutText, /GNU AGPL-3\.0-only license/);
+      assert.match(aboutText, /raml-dev/);
+      await evaluate(`document.querySelector('.about-dialog__actions .ghost-button').click()`);
+      assert.equal(await evaluate(`window.openedURL`), 'https://github.com/raml-dev/marktyp');
+      await evaluate(`document.querySelector('.about-dialog__header .toolbar-button').click()`);
+    });
 
     await t.test('Dual fits the minimum desktop window', async () => {
       await action('view:dual');
@@ -265,6 +292,16 @@ test(
       await action('view:source');
       assert.match(await evaluate(`document.querySelector('.source-editor').value`), /\[x\]\s+Pending/);
     });
+    await t.test('unordered and ordered lists show their markers', async () => {
+      await input('# Lists\n\n- One\n- Two\n\n1. First\n2. Second');
+      await action('view:document');
+      const styles = await evaluate(
+        `(()=>{const editor=document.querySelector('[aria-label="Document editor"]');return {unordered:getComputedStyle(editor.querySelector('ul')).listStyleType,ordered:getComputedStyle(editor.querySelector('ol')).listStyleType};})()`,
+      );
+      assert.equal(styles.unordered, 'disc');
+      assert.equal(styles.ordered, 'decimal');
+      await action('view:source');
+    });
     await t.test('pasted rich HTML is sanitized before insertion', async () => {
       await action('view:document');
       const result = await evaluate(
@@ -297,6 +334,32 @@ test(
         await evaluate(
           `(()=>{const editor=document.querySelector('[aria-label="Document editor"]');const selection=getSelection();const before=document.createRange();before.selectNodeContents(editor);before.setEnd(selection.anchorNode,selection.anchorOffset);return document.activeElement===editor && editor.contains(selection.anchorNode) && before.toString().length>0;})()`,
         ),
+      );
+    });
+    await t.test('pasted Markdown is rendered in the visual editor', async () => {
+      await action('view:source');
+      await input('# Paste target\n\n');
+      await action('view:document');
+      const result = await evaluate(
+        `(()=>{const editor=document.querySelector('[aria-label="Document editor"]');editor.focus();const range=document.createRange();range.selectNodeContents(editor);range.collapse(false);getSelection().removeAllRanges();getSelection().addRange(range);const data=new DataTransfer();data.setData('text/plain','## Pasted heading\\n\\n- first\\n- second\\n\\n**bold**');editor.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,clipboardData:data}));return {html:editor.innerHTML,markdown:window.workspace.activeDoc.markdown};})()`,
+      );
+      assert.match(result.html, /<h2[^>]*>Pasted heading<\/h2>/);
+      assert.match(result.html, /<li[^>]*>first<\/li>/);
+      assert.match(result.html, /<strong[^>]*>bold<\/strong>/);
+      await action('view:source');
+      const source = await evaluate(`document.querySelector('.source-editor').value`);
+      assert.match(source, /## Pasted heading/);
+      assert.match(source, /-\s+first/);
+      assert.match(source, /\*\*bold\*\*/);
+    });
+    await t.test('a pasted heading never exposes a stray angle bracket in the note title', async () => {
+      await action('view:document');
+      await evaluate(
+        `(()=>{const editor=document.querySelector('[aria-label="Document editor"]');editor.focus();const range=document.createRange();range.selectNodeContents(editor);getSelection().removeAllRanges();getSelection().addRange(range);const data=new DataTransfer();data.setData('text/plain','# <Clean title\\n\\nBody');editor.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,clipboardData:data}));})()`,
+      );
+      assert.equal(
+        await evaluate(`document.querySelector('.toolbar-titlebar__title').textContent.trim()`),
+        'Clean title',
       );
     });
     await t.test('inline backticks become inline code in Document mode', async () => {
@@ -645,6 +708,24 @@ test(
       );
       assert.match(await evaluate('window.openedURL'), /^https:\/\/example\.com/);
     });
+    await t.test('active notes can be renamed from the sidebar', async () => {
+      await action('view:source');
+      await input('# Before rename\n\nBody');
+      await evaluate(`document.querySelector('.sidebar__section-actions button:nth-child(2)').click()`);
+      await waitFor(() => evaluate(`Boolean(document.querySelector('[aria-label="Note title"]'))`));
+      await evaluate(
+        `(()=>{const input=document.querySelector('[aria-label="Note title"]');input.value='Renamed note';input.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.rich-editor-modal__actions button:last-child').click();})()`,
+      );
+      await waitFor(() =>
+        evaluate(`document.querySelector('.toolbar-titlebar__title')?.textContent.trim()==='Renamed note'`),
+      );
+      assert.match(await evaluate(`window.workspace.activeDoc.markdown`), /^# Renamed note/m);
+      assert.ok(
+        await evaluate(
+          `Array.from(document.querySelectorAll('.note-card')).some(note=>note.textContent.includes('Renamed note'))`,
+        ),
+      );
+    });
     await t.test('failed autosave is not retried forever without a new edit', async () => {
       await action('view:source');
       await evaluate(
@@ -711,6 +792,19 @@ test(
       await evaluate(`window.events['marktyp:request-close']()`);
       await waitFor(() => evaluate('window.quit === true'));
       assert.ok(await evaluate(`window.savedDrafts.some(d=>d.markdown.includes('graph TD'))`));
+    });
+    await t.test('each New action creates a distinct note in the sidebar', async () => {
+      const before = await evaluate(`document.querySelectorAll('.note-card').length`);
+      await action('file:new');
+      const firstPath = await evaluate(`window.workspace.activeDoc.path`);
+      await action('file:new');
+      const secondPath = await evaluate(`window.workspace.activeDoc.path`);
+      assert.notEqual(firstPath, secondPath);
+      assert.equal(await evaluate(`document.querySelectorAll('.note-card').length`), before + 2);
+      assert.equal(
+        await evaluate(`document.querySelector('.toolbar-titlebar__path').textContent.trim()`),
+        secondPath,
+      );
     });
   },
 );

@@ -7,6 +7,13 @@ func (s *Store) GetWorkspace(appInfo AppInfo) (WorkspaceData, error) {
 	return s.getWorkspace(appInfo)
 }
 
+// CreateDocument creates and activates a distinct note in managed storage.
+func (s *Store) CreateDocument(appInfo AppInfo) (WorkspaceData, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.createDocument(appInfo)
+}
+
 // OpenDocumentAtPath runs a serialized storage transaction.
 func (s *Store) OpenDocumentAtPath(path string, appInfo AppInfo) (WorkspaceData, error) {
 	s.mu.Lock()
@@ -19,6 +26,13 @@ func (s *Store) SaveDocument(request SaveDocumentRequest, appInfo AppInfo) (Work
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.saveDocument(request, appInfo)
+}
+
+// RenameNote updates a note's Markdown title in a serialized storage transaction.
+func (s *Store) RenameNote(request RenameNoteRequest, appInfo AppInfo) (WorkspaceData, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.renameNote(request, appInfo)
 }
 
 // DeleteNote runs a serialized storage transaction.
@@ -47,6 +61,16 @@ func (s *Store) UpdatePreferences(request UpdatePreferencesRequest) (AppConfig, 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.updatePreferences(request)
+}
+
+// GetConfig returns the persisted application configuration.
+func (s *Store) GetConfig() (AppConfig, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.ensureStorage(); err != nil {
+		return AppConfig{}, err
+	}
+	return s.readConfig()
 }
 
 // RegisterOpenedNote runs a serialized storage transaction.
