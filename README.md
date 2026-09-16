@@ -92,7 +92,7 @@ Marktyp requires GTK 3 and WebKitGTK 4.1 at runtime. Package names vary by distr
 Prerequisites:
 
 - Go `1.26.1+`
-- Node.js `20+` and npm
+- Node.js `20.19+` and npm
 - Wails CLI `v2.15.0`
 
 Clone the repository and install the dependencies:

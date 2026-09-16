@@ -83,13 +83,19 @@ async function preserveDraft(): Promise<boolean> {
   await enqueue(() => backend.saveDraft(path, text));
   return true;
 }
-async function navigate(operation: () => Promise<WorkspaceData>, label: string) {
+async function navigate(
+  operation: () => Promise<WorkspaceData>,
+  label: string,
+  ignoreUnchangedDocument = false,
+) {
   if (get(editorState).loading) return false;
+  const currentPath = get(editorState).documentState.path;
   editorState.update((state) => ({ ...state, loading: true }));
   try {
     if (!(await preserveDraft())) return false;
     const workspace = await enqueue(operation);
     if (disposed) return false;
+    if (ignoreUnchangedDocument && workspace.activeDoc.path === currentPath) return false;
     applyWorkspace(workspace, label);
     return true;
   } catch (error) {
@@ -259,7 +265,7 @@ export const workspaceStore = {
       editorState.update((state) => ({ ...state, loading: false }));
     }
   },
-  open: () => navigate(backend.openDocument, 'Document opened'),
+  open: () => navigate(backend.openDocument, 'Document opened', true),
   select: (path: string) => navigate(() => backend.openDocumentAtPath(path), 'Document selected'),
   async create() {
     return navigate(backend.newDocument, 'New note created');

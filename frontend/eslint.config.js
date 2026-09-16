@@ -1,8 +1,7 @@
-import { loadTool } from './scripts/tooling.mjs';
-const js = loadTool('@eslint/js');
-const ts = loadTool('typescript-eslint');
-const svelte = loadTool('eslint-plugin-svelte');
-const globals = loadTool('globals');
+import js from '@eslint/js';
+import svelte from 'eslint-plugin-svelte';
+import globals from 'globals';
+import ts from 'typescript-eslint';
 
 export default [
   { ignores: ['dist/**', 'node_modules/**', 'wailsjs/**'] },

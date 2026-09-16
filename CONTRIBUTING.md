@@ -54,7 +54,7 @@ If a solution is difficult to explain, it is probably too complex.
 
 ## Development setup
 
-Marktyp requires Go `1.26.1+`, Node.js `20+`, npm, and the Wails CLI `v2.15.0`.
+Marktyp requires Go `1.26.1+`, Node.js `20.19+`, npm, and the Wails CLI `v2.15.0`.
 
 ```bash
 git clone https://github.com/raml-dev/marktyp.git
