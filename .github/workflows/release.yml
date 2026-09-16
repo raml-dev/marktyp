@@ -3,14 +3,35 @@ name: Release
 on:
   push:
     tags:
-      - "*"
+      - "[0-9]+.[0-9]+.[0-9]+"
+      - "[0-9]+.[0-9]+.[0-9]+-rc[0-9]+"
 
 permissions:
   contents: write
 
 jobs:
+  validate:
+    name: Validate release tag
+    runs-on: ubuntu-24.04
+    outputs:
+      prerelease: ${{ steps.tag.outputs.prerelease }}
+      make_latest: ${{ steps.tag.outputs.make_latest }}
+    steps:
+      - name: Detect release channel
+        id: tag
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_NAME}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-rc[0-9]+$ ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+            echo "make_latest=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+            echo "make_latest=true" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
     name: Build ${{ matrix.name }}
+    needs: validate
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -49,9 +70,14 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 20.19
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+
+      - name: Set release version
+        shell: bash
+        run: |
+          node -e 'const fs = require("fs"); const path = "wails.json"; const config = JSON.parse(fs.readFileSync(path, "utf8")); config.info.productVersion = process.argv[1]; fs.writeFileSync(path, JSON.stringify(config, null, 2) + "\n");' "${GITHUB_REF_NAME}"
 
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
@@ -64,17 +90,23 @@ jobs:
             libwebkit2gtk-4.1-dev
 
       - name: Install frontend dependencies
-        run: npm install
+        run: npm ci
         working-directory: frontend
 
       - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
 
-      - name: Build app on Linux and macOS
-        if: runner.os != 'Windows'
+      - name: Build app on Linux
+        if: runner.os == 'Linux'
         shell: bash
         run: |
           "$(go env GOPATH)/bin/wails" build -clean
+
+      - name: Build app on macOS
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          "$(go env GOPATH)/bin/wails" build -clean -ldflags="-extldflags=-Wl,-framework,UniformTypeIdentifiers"
 
       - name: Build app on Windows
         if: runner.os == 'Windows'
@@ -106,19 +138,34 @@ jobs:
 
   release:
     name: Publish Release
-    needs: build
+    needs: [validate, build]
     runs-on: ubuntu-24.04
 
     steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           path: release-assets
 
+      - name: Prepare release notes
+        shell: bash
+        run: |
+          NOTES_FILE="docs/releases/${GITHUB_REF_NAME}.md"
+          if [ -f "$NOTES_FILE" ]; then
+            cp "$NOTES_FILE" RELEASE_NOTES.md
+          else
+            printf '# Marktyp %s\n' "$GITHUB_REF_NAME" > RELEASE_NOTES.md
+          fi
+
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
+          body_path: RELEASE_NOTES.md
           files: |
             release-assets/**/*.zip
             release-assets/**/*.tar.gz
-          generate_release_notes: true
+          prerelease: ${{ needs.validate.outputs.prerelease == 'true' }}
+          make_latest: ${{ needs.validate.outputs.make_latest == 'true' }}
