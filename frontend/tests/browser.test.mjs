@@ -109,7 +109,7 @@ test(
     window.savedDrafts = [];
     window.deletedPaths = [];
     window.confirm = () => true;
-    window.runtime = {EventsOnMultiple(name, fn) { window.events[name] = fn; return () => delete window.events[name]; }, BrowserOpenURL(url) { window.openedURL = url; }};
+    window.runtime = {EventsOnMultiple(name, fn) { window.events[name] = fn; return () => delete window.events[name]; }, BrowserOpenURL(url) { window.openedURL = url; }, OnFileDrop(fn, useDropTarget) {window.fileDrop=fn;window.useDropTarget=useDropTarget;}, OnFileDropOff() {delete window.fileDrop;}};
     const doc = (path, markdown) => ({id:path,title:markdown.split('\\n')[0].replace(/^# /,''),path,markdown,hasDraft:false});
     window.workspace = {appInfo:{companyName:'raml-dev',productName:'marktyp',productVersion:'dev',license:'GNU AGPL-3.0-only license',docsLink:'',ghLink:'https://github.com/raml-dev/marktyp',orgLink:'https://github.com/raml-dev'}, config:{version:2,theme:'marktyp',preferredMode:'Document',autosave:false,lastOpenedPath:'/a.md',checkForUpdates:true,includePrereleaseUpdates:false}, notes:[{id:'a',path:'/a.md',title:'Alpha',updatedLabel:'Today'},{id:'b',path:'/b.md',title:'Beta',updatedLabel:'Today'}],activeDoc:doc('/a.md','# Alpha\\n\\nInitial text')};
     window.go = {main:{App:{
@@ -117,7 +117,7 @@ test(
       GetUpdatesFromRepo:async()=>({Release:{body:'## Changes\\n\\n- Better updates',created_at:'2026-09-01T00:00:00Z',html_url:'https://github.com/raml-dev/marktyp/releases/tag/v0.2.0',updated_at:'2026-09-01T00:00:00Z',name:'Marktyp 0.2.0',tag_name:'v0.2.0',prerelease:false}}),
       NewDocument:async()=>{window.newNoteCount=(window.newNoteCount||0)+1;const path='/managed/Untitled '+window.newNoteCount+'.md';const note=doc(path,'# Untitled\\n\\n');window.workspace.activeDoc=note;window.workspace.notes=[{id:'new-'+window.newNoteCount,path,title:'Untitled',updatedLabel:'Today'},...window.workspace.notes];return structuredClone(window.workspace);},
       OpenDocument:async()=>structuredClone(window.workspace),
-      OpenDocumentAtPath:async(path)=>{window.workspace.activeDoc=doc(path,path==='/a.md'?'# Alpha':'# Beta'); return structuredClone(window.workspace);},
+      OpenDocumentAtPath:async(path)=>{if(path==='/missing.md')throw new Error('File not found');window.workspace.activeDoc=doc(path,path==='/a.md'?'# Alpha':'# Beta'); return structuredClone(window.workspace);},
       RenameNote:async(request)=>{const rename=markdown=>{const lines=markdown.split('\\n');const index=lines.findIndex(line=>/^\\s*#\\s+/.test(line));if(index>=0)lines[index]='# '+request.title;else lines.unshift('# '+request.title,'');return lines.join('\\n');};if(window.workspace.activeDoc.path===request.path)window.workspace.activeDoc=doc(request.path,rename(window.workspace.activeDoc.markdown));window.workspace.notes=window.workspace.notes.map(note=>note.path===request.path?{...note,title:request.title}:note);return structuredClone(window.workspace);},
       SaveDocument:async(request)=>{await new Promise(r=>setTimeout(r,window.saveDelay||0)); window.workspace.activeDoc=doc(request.path,request.markdown);return structuredClone(window.workspace);},
       SaveDocumentAs:async(request)=>{window.workspace.activeDoc=doc('/saved.md',request.markdown);return structuredClone(window.workspace);},
@@ -812,6 +812,78 @@ test(
         await evaluate(`document.querySelector('.toolbar-titlebar__path').textContent.trim()`),
         secondPath,
       );
+    });
+    await t.test('file drops prevent navigation throughout every editor mode', async () => {
+      for (const mode of ['document', 'source', 'dual']) {
+        await action('view:' + mode);
+        const result = await evaluate(`(() => {
+          const selectors=['.workspace-toolbar','.sidebar','.document-preview','.source-editor'];
+          return selectors.flatMap(selector=>{
+            const target=document.querySelector(selector);
+            if(!target)return [];
+            return ['dragover','drop'].map(type=>{
+              const transfer=new DataTransfer();
+              transfer.items.add(new File(['# Dropped'],'dropped.md',{type:'text/markdown'}));
+              transfer.setData('text/plain','file:///dropped.md');
+              const event=new DragEvent(type,{bubbles:true,cancelable:true,dataTransfer:transfer});
+              target.dispatchEvent(event);
+              return event.defaultPrevented;
+            });
+          });
+        })()`);
+        assert.ok(result.length >= 6);
+        assert.ok(result.every(Boolean));
+        assert.ok(await evaluate(`!document.body.textContent.includes('file:///dropped.md')`));
+        assert.ok(await evaluate(`!!document.querySelector('.app-shell') && !!window.fileDrop`));
+      }
+      assert.equal(await evaluate('window.useDropTarget'), false);
+    });
+    await t.test('native file drop preserves drafts, mode and resets undo history', async () => {
+      for (const mode of ['document', 'source', 'dual']) {
+        await action('view:source');
+        const pathBefore = await evaluate('window.workspace.activeDoc.path');
+        const text = '# Draft before drop in ' + mode;
+        await input(text);
+        await action('view:' + mode);
+        const nextPath = '/drop with spaces ' + mode + (mode === 'dual' ? '.MARKDOWN' : '.MD');
+        await evaluate(`window.fileDrop(10,10,[${JSON.stringify(nextPath)}])`);
+        await waitFor(() =>
+          evaluate(
+            `window.workspace.activeDoc.path===${JSON.stringify(nextPath)} && !document.querySelector('.app-shell').inert`,
+          ),
+        );
+        assert.ok(
+          await evaluate(
+            `window.savedDrafts.some(d=>d.path===${JSON.stringify(pathBefore)} && d.markdown===${JSON.stringify(text)})`,
+          ),
+        );
+        assert.equal(
+          await evaluate(`document.querySelector('.toolbar-titlebar__path').textContent.trim()`),
+          nextPath,
+        );
+        assert.equal(await evaluate(`!!document.querySelector('.source-editor')`), mode !== 'document');
+        assert.equal(await evaluate(`!!document.querySelector('.document-preview')`), mode !== 'source');
+        if (mode !== 'document') {
+          await evaluate(
+            `document.querySelector('.source-editor').dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,key:'z',ctrlKey:true}))`,
+          );
+          assert.equal(await evaluate(`document.querySelector('.source-editor').value`), '# Beta');
+        }
+      }
+    });
+    await t.test('invalid, failed and same-document drops keep current edits', async () => {
+      await action('view:source');
+      await input('# Keep these edits');
+      const currentPath = await evaluate('window.workspace.activeDoc.path');
+      for (const paths of [[], ['/photo.png'], ['/a.md', '/b.md'], [currentPath], ['/missing.md']]) {
+        await evaluate(`window.fileDrop(10,10,${JSON.stringify(paths)})`);
+        await delay(50);
+        assert.equal(await evaluate(`document.querySelector('.source-editor').value`), '# Keep these edits');
+        assert.equal(await evaluate('window.workspace.activeDoc.path'), currentPath);
+        assert.equal(await evaluate(`document.querySelector('.app-shell').inert`), false);
+      }
+      await action('file:save');
+      assert.equal(await evaluate('window.workspace.activeDoc.markdown'), '# Keep these edits');
     });
   },
 );

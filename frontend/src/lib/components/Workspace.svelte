@@ -139,7 +139,7 @@
           aboutOpen = true;
           break;
       }
-    });
+    }, resetEditorSession);
 
     function onPointerDown(event: PointerEvent) {
       const target = event.target as Element | null;
