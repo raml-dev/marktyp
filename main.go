@@ -27,6 +27,9 @@ func main() {
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
+		DragAndDrop: &options.DragAndDrop{
+			EnableFileDrop: true,
+		},
 		BackgroundColour: &options.RGBA{R: 244, G: 240, B: 229, A: 1},
 		OnStartup:        app.startup,
 		OnBeforeClose:    app.beforeClose,

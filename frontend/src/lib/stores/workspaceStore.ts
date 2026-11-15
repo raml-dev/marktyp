@@ -1,9 +1,10 @@
 import { get, writable } from 'svelte/store';
-import { EventsOn, BrowserOpenURL } from '../../../wailsjs/runtime/runtime';
+import { EventsOn, BrowserOpenURL, OnFileDrop, OnFileDropOff } from '../../../wailsjs/runtime/runtime';
 import * as backend from '../backend';
 import { fallbackWorkspace } from '../../mockData';
 import { titleFromMarkdown } from '../utils/markdown';
 import { BoundedCache } from '../utils/boundedCache';
+import { preventFileDropNavigation } from '../utils/fileDrop';
 import type { AppTheme, EditorMode, WorkspaceData, UpdatePreferencesRequest } from '../../types';
 
 export function normalizeMode(value?: string | null): EditorMode {
@@ -209,8 +210,20 @@ export const workspaceStore = {
   editDocument(text: string, statusMessage = 'Document changed') {
     workspaceStore.editSource(text, true, statusMessage);
   },
-  listen(onAction: (action: string) => void) {
-    if (!('runtime' in window)) return () => {};
+  listen(onAction: (action: string) => void, onDocumentOpened: () => void) {
+    window.addEventListener('dragover', preventFileDropNavigation, true);
+    window.addEventListener('drop', preventFileDropNavigation, true);
+    const removeDropGuards = () => {
+      window.removeEventListener('dragover', preventFileDropNavigation, true);
+      window.removeEventListener('drop', preventFileDropNavigation, true);
+    };
+    if (!('runtime' in window)) return removeDropGuards;
+    OnFileDrop((_x, _y, paths) => {
+      if (document.querySelector('dialog[open]')) return;
+      void workspaceStore.openDroppedFiles(paths).then((opened) => {
+        if (opened) onDocumentOpened();
+      });
+    }, false);
     const offMenu = EventsOn('marktyp:menu-action', onAction);
     const offClose = EventsOn('marktyp:request-close', () => {
       if (get(editorState).loading || get(editorState).saving || get(editorState).exporting) {
@@ -226,6 +239,8 @@ export const workspaceStore = {
     return () => {
       offMenu();
       offClose();
+      OnFileDropOff();
+      removeDropGuards();
     };
   },
   async selectImage(): Promise<string | null> {
@@ -266,6 +281,17 @@ export const workspaceStore = {
     }
   },
   open: () => navigate(backend.openDocument, 'Document opened', true),
+  async openDroppedFiles(paths: string[]) {
+    const state = get(editorState);
+    if (state.loading || state.saving || state.exporting || disposed) return false;
+    if (paths.length !== 1 || !/\.(md|markdown)$/i.test(paths[0])) {
+      message('Drop a single Markdown file (.md or .markdown) to open it');
+      return false;
+    }
+    const path = paths[0];
+    if (path === state.documentState.path) return false;
+    return navigate(() => backend.openDocumentAtPath(path), 'Document opened');
+  },
   select: (path: string) => navigate(() => backend.openDocumentAtPath(path), 'Document selected'),
   async create() {
     return navigate(backend.newDocument, 'New note created');

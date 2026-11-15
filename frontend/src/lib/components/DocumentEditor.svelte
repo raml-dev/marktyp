@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { isFileDrop } from '../utils/fileDrop';
   import { onMount, tick } from 'svelte';
   import RichEditorModal from './RichEditorModal.svelte';
   import { editorState, workspaceStore } from '../stores/workspaceStore';
@@ -716,6 +717,7 @@
 
   function handleDocumentDrop(event: DragEvent) {
     event.preventDefault();
+    if (isFileDrop(event)) return;
     refreshCurrentSnapshot();
     const text = event.dataTransfer?.getData('text/plain') ?? '';
     if (text) insertText(text);
